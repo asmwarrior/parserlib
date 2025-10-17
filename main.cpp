@@ -58,7 +58,7 @@ class cpp_parser_grammar {
 public:
     using lexer_grammar = cpp_lexer_grammar;
 
-    enum match_id_type {
+    enum class match_id_type {
         NUM,
         ID,
         ADD,
@@ -67,7 +67,7 @@ public:
         DIV
     };
 
-    enum error_id_type {
+    enum class error_id_type {
         INVALID_TOKEN,
         INVALID_UNARY_EXPR,
         INCOMPLETE_PARSE
@@ -119,21 +119,21 @@ public:
     // Evaluate the AST
     static double eval(const ast_node_ptr_type<match_id_type, lexer_type::iterator_type>& node) {
         switch (node->id()) {
-            case NUM: {
+            case match_id_type::NUM: {
                 std::stringstream ss;
                 ss << node->source();
                 double v; ss >> v;
                 return v;
             }
-            case ADD:
+            case match_id_type::ADD:
                 return eval(node->children()[0]) + eval(node->children()[1]);
-            case SUB:
+            case match_id_type::SUB:
                 return eval(node->children()[0]) - eval(node->children()[1]);
-            case MUL:
+            case match_id_type::MUL:
                 return eval(node->children()[0]) * eval(node->children()[1]);
-            case DIV:
+            case match_id_type::DIV:
                 return eval(node->children()[0]) / eval(node->children()[1]);
-            case ID:
+            case match_id_type::ID:
                 throw std::runtime_error("Identifiers evaluation not implemented");
         }
         throw std::invalid_argument("invalid ast node id");
