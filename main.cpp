@@ -1,157 +1,168 @@
-
+#include <sstream>
+#include <stdexcept>
+#include <iostream>
+#include <cassert>
 #include "parserlib.hpp"
 
-#include <iostream>
-
 using namespace parserlib;
-using namespace core;
-using namespace cfe;
 
-class CalculatorCFE {
+// --- Source type ---
+using source_type = line_counting_string<>;
+
+// --- Lexer grammar ---
+class cpp_lexer_grammar {
 public:
-    enum class TokenId {
-        Number,
-        AddOp,
-        SubOp,
-        MulOp,
-        DivOp,
-        LeftParen,
-        RightParen
+    enum class match_id_type {
+        NUMBER,
+        IDENTIFIER,
+        PLUS,
+        MINUS,
+        MUL,
+        DIV,
+        LEFT_PAREN,
+        RIGHT_PAREN
     };
 
-    enum class ASTId {
-        Number,
-        AddExpr,
-        SubExpr,
-        MulExpr,
-        DivExpr
+    enum class error_id_type {
+        INVALID_TOKEN
     };
 
-    template <class CharT, class CharTraits>
-    friend std::basic_ostream<CharT, CharTraits>& operator << (std::basic_ostream<CharT, CharTraits>& stream, ASTId id) {
-        switch (id) {
-            case ASTId::Number:
-                stream << "Number";
-                break;
-            case ASTId::AddExpr:
-                stream << "Add";
-                break;
-            case ASTId::SubExpr:
-                stream << "Sub";
-                break;
-            case ASTId::MulExpr:
-                stream << "Mul";
-                break;
-            case ASTId::DivExpr:
-                stream << "Div";
+    template <class ParseContext>
+    auto parse(ParseContext& pc) const noexcept {
+        const auto whitespace = terminal(' ');
+        const auto digit = range('0', '9');
+        const auto letter = range('a', 'z') | range('A', 'Z') | terminal('_');
+
+        const auto number = (+digit >> -('.' >> +digit))->*match_id_type::NUMBER;
+        const auto identifier = (+letter >> *(letter | digit))->*match_id_type::IDENTIFIER;
+        const auto plus = terminal('+')->*match_id_type::PLUS;
+        const auto minus = terminal('-')->*match_id_type::MINUS;
+        const auto mul = terminal('*')->*match_id_type::MUL;
+        const auto div = terminal('/')->*match_id_type::DIV;
+        const auto left_paren = terminal('(')->*match_id_type::LEFT_PAREN;
+        const auto right_paren = terminal(')')->*match_id_type::RIGHT_PAREN;
+
+        const auto token = number | identifier | plus | minus | mul | div | left_paren | right_paren;
+        const auto token_error = error(error_id_type::INVALID_TOKEN, skip_until(whitespace | token));
+        const auto token1 = token | token_error;
+
+        const auto grammar = *(whitespace | token1);
+        return grammar.parse(pc);
+    }
+};
+
+using lexer_type = lexer<source_type, cpp_lexer_grammar>;
+
+// --- Parser grammar ---
+class cpp_parser_grammar {
+public:
+    using lexer_grammar = cpp_lexer_grammar;
+
+    enum match_id_type {
+        NUM,
+        ID,
+        ADD,
+        SUB,
+        MUL,
+        DIV
+    };
+
+    enum error_id_type {
+        INVALID_TOKEN,
+        INVALID_UNARY_EXPR,
+        INCOMPLETE_PARSE
+    };
+
+    static error_id_type translate_lexer_error_id(lexer_type::error_id_type error) {
+        switch (error) {
+            case lexer_type::error_id_type::INVALID_TOKEN:
+                return error_id_type::INVALID_TOKEN;
+            default:
                 break;
         }
-        return stream;
+        throw std::invalid_argument("invalid lexer error id");
     }
 
-    typedef CFE<TokenId, ASTId> CFE;
-
-    typedef typename CFE::TokenizerRule TokenizerRule;
-
-    typedef typename CFE::ParserRule ParserRule;
-
-    typedef typename CFE::ASTPtr ASTPtr;
-
-    typedef typename CFE::ASTContainer ASTContainer;
-
-    typedef typename CFE::ErrorContainer ErrorContainer;
-
-    typedef typename CFE::Source Source;
-
-    typedef typename CFE::TokenContainerPtr TokenContainerPtr;
-
-    typedef typename CFE::ASTContainerPtr ASTContainerPtr;
-
-    typedef typename CFE::ErrorContainerPtr ErrorContainerPtr;
-
-    CalculatorCFE() {
-        /**** tokenizer ****/
-        auto ws = oneIn('\0', ' ');
-        auto digit = oneIn('0', '9');
-        auto sign = oneOf('+', '-');
-        auto integer = +digit;
-        auto number = (-sign >> integer >> -('.' >> integer))->*TokenId::Number;
-        auto addOp = term('+')->*TokenId::AddOp;
-        auto subOp = term('-')->*TokenId::SubOp;
-        auto mulOp = term('*')->*TokenId::MulOp;
-        auto divOp = term('/')->*TokenId::DivOp;
-        auto leftParen = term('(')->*TokenId::LeftParen;
-        auto rightParen = term(')')->*TokenId::RightParen;
-        m_tokenizerGrammar = *(ws | number | addOp | subOp | mulOp | divOp | leftParen | rightParen);
-
-        /**** parser ****/
-
-        auto parenExpr = TokenId::LeftParen >> m_add >> TokenId::RightParen;
-
-        auto num = term(TokenId::Number)->*ASTId::Number;
-
-        auto val
-            = parenExpr
-            | num;
-
-        m_mul
-            = (m_mul >> TokenId::MulOp >> val)->*ASTId::MulExpr
-            | (m_mul >> TokenId::DivOp >> val)->*ASTId::DivExpr
-            | val;
-
-        m_add
-            = (m_add >> TokenId::AddOp >> m_mul)->*ASTId::AddExpr
-            | (m_add >> TokenId::SubOp >> m_mul)->*ASTId::SubExpr
-            | m_mul;
-
-        m_parserGrammar = m_add;
-    }
-
-    std::tuple<bool, TokenContainerPtr, ASTContainerPtr, ErrorContainerPtr> parse(Source& input) {
-        return CFE::parse(input, m_tokenizerGrammar, m_parserGrammar);
-    }
-
-    static double evaluate(const ASTPtr& ast) {
-        switch (ast->getID()) {
-            case ASTId::Number: {
-                std::stringstream stream;
-                stream << ast->getSource();
-                double r;
-                stream >> r;
-                return r;
-            }
-
-            case ASTId::AddExpr:
-                return evaluate(ast->getChildren()[0]) + evaluate(ast->getChildren()[1]);
-
-            case ASTId::SubExpr:
-                return evaluate(ast->getChildren()[0]) - evaluate(ast->getChildren()[1]);
-
-            case ASTId::MulExpr:
-                return evaluate(ast->getChildren()[0]) * evaluate(ast->getChildren()[1]);
-
-            case ASTId::DivExpr:
-                return evaluate(ast->getChildren()[0]) / evaluate(ast->getChildren()[1]);
-        }
-
-        throw std::logic_error("invalid CalculatorCFE ASTId.");
+    template <class ParseContext>
+    parse_result parse(ParseContext& pc) const noexcept {
+        return instance<ParseContext>().parse(pc);
     }
 
 private:
-    TokenizerRule m_tokenizerGrammar;
-    ParserRule m_add;
-    ParserRule m_mul;
-    ParserRule m_parserGrammar;
+    template <class ParseContext>
+    class instance {
+    public:
+        instance() {
+            const auto val
+                = terminal(lexer_grammar::match_id_type::NUMBER)->*match_id_type::NUM
+                | terminal(lexer_grammar::match_id_type::IDENTIFIER)->*match_id_type::ID;
+
+            mul = (mul >> terminal(lexer_grammar::match_id_type::MUL) >> val)->*match_id_type::MUL
+                | (mul >> terminal(lexer_grammar::match_id_type::DIV) >> val)->*match_id_type::DIV
+                | val;
+
+            add = (add >> terminal(lexer_grammar::match_id_type::PLUS) >> mul)->*match_id_type::ADD
+                | (add >> terminal(lexer_grammar::match_id_type::MINUS) >> mul)->*match_id_type::SUB
+                | mul;
+        }
+
+        parse_result parse(ParseContext& pc) noexcept {
+            return add.parse(pc);
+        }
+
+    private:
+        rule<ParseContext> mul;
+        rule<ParseContext> add;
+    };
+
+public:
+    // Evaluate the AST
+    static double eval(const ast_node_ptr_type<match_id_type, lexer_type::iterator_type>& node) {
+        switch (node->id()) {
+            case NUM: {
+                std::stringstream ss;
+                ss << node->source();
+                double v; ss >> v;
+                return v;
+            }
+            case ADD:
+                return eval(node->children()[0]) + eval(node->children()[1]);
+            case SUB:
+                return eval(node->children()[0]) - eval(node->children()[1]);
+            case MUL:
+                return eval(node->children()[0]) * eval(node->children()[1]);
+            case DIV:
+                return eval(node->children()[0]) / eval(node->children()[1]);
+            case ID:
+                throw std::runtime_error("Identifiers evaluation not implemented");
+        }
+        throw std::invalid_argument("invalid ast node id");
+    }
 };
 
+using parser_type = parser<source_type, cpp_lexer_grammar, cpp_parser_grammar>;
 
-int main()
-{
-    CalculatorCFE calc;
-    SourceString input = "1.5 + 8.9";
-    auto [success, tokens, ast, errors] = calc.parse(input);
+// --- Test functions ---
+static void test_tokenization() {
+    source_type src = "a + 123 * b";
+    auto result = lexer_type::parse(src);
+    assert(result.errors.size() == 0);
+}
 
-    std::cout << CalculatorCFE::evaluate((*ast)[0]) << std::endl;
+static void test_parsing() {
+    source_type src = "1+2*3";
+    auto result = parser_type::parse(src);
+    assert(result.success);
+    assert(result.ast_nodes.size() == 1);
+    assert(cpp_parser_grammar::eval(result.ast_nodes[0]) == 1.0 + 2.0 * 3.0);
+}
 
-    return 0;
+void test_cpp_parser() {
+    test_tokenization();
+    test_parsing();
+    std::cout << "All tests passed.\n";
+}
+
+int main() {
+    test_cpp_parser();
 }
