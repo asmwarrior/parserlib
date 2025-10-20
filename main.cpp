@@ -13,6 +13,16 @@ using namespace parserlib;
 // --- Source type ---
 using source_type = line_counting_string<>;
 
+source_type src = R"(class MyClass {
+        int a;
+        float b;
+        void foo();
+    }
+
+    int x;
+    void bar() { })";
+
+
 // --- Lexer grammar ---
 class cpp_lexer_grammar {
 public:
@@ -35,7 +45,6 @@ public:
         WHILE,
         FOR,
         RETURN,
-        FUNC,
         CLASS
     };
 
@@ -52,7 +61,6 @@ public:
             {"while",  match_id_type::WHILE},
             {"for",    match_id_type::FOR},
             {"return", match_id_type::RETURN},
-            {"func",   match_id_type::FUNC},
             {"class",  match_id_type::CLASS}
         };
         return map;
@@ -88,13 +96,6 @@ public:
                          | plus | minus | mul | div
                          | lparen | rparen | lbrace | rbrace | semicolon | comma;
 
-//        // Token error
-//        const auto token_error = error(error_id_type::INVALID_TOKEN, skip_until(whitespace | token));
-//        const auto token1 = token | token_error;
-//
-//        // Grammar: zero or more tokens or whitespace
-//        const auto grammar = *(whitespace | token1);
-
         // Grammar: zero or more tokens or whitespace
         const auto grammar = *(+whitespace | token);
 
@@ -121,16 +122,6 @@ using lexer_type = lexer<source_type, cpp_lexer_grammar>;
 
 
 void test_cpp_lexer() {
-    source_type src = R"(
-        class MyClass {
-            func foo(a, b) {
-                return a + b;
-            }
-            func bar() {
-                if (1) { return 2; } else { return 3; }
-            }
-        }
-    )";
 
     using lexer_t = lexer_type;
 
@@ -159,7 +150,7 @@ void test_cpp_lexer() {
         }
     }
 
-    std::cout << "Parse stopped at offset "
+    std::cout << "Lexer stopped at offset "
               << std::distance(src.begin(), result.parse_position) << "\n";
 }
 
@@ -171,8 +162,10 @@ public:
 
     enum class match_id_type {
         VAR_DECL,
+        FUNC_DEF,
         BLOCK,
         CLASS_DEF,
+        TOP_LEVEL
     };
 
     enum class error_id_type {
@@ -202,31 +195,50 @@ private:
         instance() {
             using id_type = typename lexer_grammar::match_id_type;
 
-            // --- Variable declaration:  <type> <id> ';'
+            // --- Variable declaration: <type> <id> ';'
             var_decl = (terminal(id_type::IDENTIFIER)
                         >> terminal(id_type::IDENTIFIER)
                         >> terminal(id_type::SEMICOLON))
                         ->*match_id_type::VAR_DECL;
 
-            // --- Block = '{' { var_decl } '}'
+            // --- Block: '{' { var_decl | func_def } '}'
             block = (terminal(id_type::LEFT_BRACE)
-                     >> *var_decl
+                     >> *(var_decl | func_def)
                      >> terminal(id_type::RIGHT_BRACE))
                      ->*match_id_type::BLOCK;
+
+            // --- Function definition: <type> <id> '(' ')' block
+            func_def = (terminal(id_type::IDENTIFIER)
+                        >> terminal(id_type::IDENTIFIER)
+                        >> terminal(id_type::LEFT_PAREN)
+                        >> terminal(id_type::RIGHT_PAREN)
+                        >> block
+                        >> -terminal(id_type::SEMICOLON))  // optional semicolon))
+                        ->*match_id_type::FUNC_DEF;
 
             // --- Class definition: 'class' IDENTIFIER block
             class_def = (terminal(id_type::CLASS)
                          >> terminal(id_type::IDENTIFIER)
-                         >> block)
+                         >> block
+                         >> -terminal(id_type::SEMICOLON))  // optional semicolon)
                          ->*match_id_type::CLASS_DEF;
+
+            // --- Top-level declarations: { class_def | func_def | var_decl }+
+            top_level = (+(
+                            class_def
+                            | func_def
+                            | var_decl
+                         ))
+                         ->*match_id_type::TOP_LEVEL;
         }
 
         parse_result parse(ParseContext& pc) noexcept {
-            return class_def.parse(pc);
+            auto r = top_level.parse(pc);
+            return r;
         }
 
     private:
-        rule<ParseContext> var_decl, block, class_def;
+        rule<ParseContext> var_decl, func_def, block, class_def, top_level;
     };
 };
 
@@ -239,13 +251,6 @@ using parser_type = parser<source_type, cpp_lexer_grammar, cpp_parser_grammar>;
 void test_cpp_parser() {
     using namespace parserlib;
 
-    source_type src = R"(
-        class MyClass {
-            int a;
-            float b;
-        }
-    )";
-
     auto result = parser_type::parse(src);
 
     if (result.success && !result.ast_nodes.empty()) {
@@ -254,6 +259,54 @@ void test_cpp_parser() {
             cpp_parser_grammar::print_ast(node);
     } else {
         std::cout << "Parsing failed.\n";
+
+    // --- Debug: locate token near parse_position ---
+    auto parsed_len = std::distance(src.begin(), result.lexer.parse_position);
+    std::cout << "Parsing stopped at offset " << parsed_len << "\n";
+
+    auto &tokens = result.lexer.parsed_tokens;
+    bool matched = false;
+
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        auto &t = tokens[i];
+        auto token_start = std::distance(src.begin(), t.begin());
+        auto token_end = std::distance(src.begin(), t.end());
+
+        if (parsed_len >= token_start && parsed_len < token_end) {
+            std::cout << "Stopped *inside* token #" << i
+                      << " id=" << static_cast<int>(t.id())
+                      << " text='" << std::string(t.begin(), t.end()) << "'\n";
+            matched = true;
+            break;
+        }
+        // Add: allow stop *exactly at the end* of a token
+        if (parsed_len == token_end) {
+            std::cout << "Stopped *right after* token #" << i
+                      << " id=" << static_cast<int>(t.id())
+                      << " text='" << std::string(t.begin(), t.end()) << "'\n";
+            matched = true;
+            break;
+        }
+        if (parsed_len < token_start) {
+            std::cout << "Stopped *before* token #" << i
+                      << " id=" << static_cast<int>(t.id())
+                      << " text='" << std::string(t.begin(), t.end()) << "'\n";
+            matched = true;
+            break;
+        }
+    }
+
+    if (!matched && !tokens.empty()) {
+        std::cout << "Stopped after the last token #" << tokens.size() - 1
+                  << " id=" << static_cast<int>(tokens.back().id())
+                  << " text='" << std::string(tokens.back().begin(), tokens.back().end()) << "'\n";
+    }
+
+
+        if (parsed_len < static_cast<int>(src.size())) {
+            std::cout << "Remaining text:\n"
+                      << std::string(result.lexer.parse_position, src.end()) << "\n";
+        }
 
         // --- Lexer errors ---
         if (!result.lexer.errors.empty()) {
@@ -276,6 +329,7 @@ void test_cpp_parser() {
         }
     }
 }
+
 
 
 
