@@ -22,7 +22,6 @@ source_type src = R"(class MyClass {
     int x;
     void bar() { })";
 
-
 // --- Lexer grammar ---
 class cpp_lexer_grammar {
 public:
@@ -52,6 +51,34 @@ public:
     enum class error_id_type {
         INVALID_TOKEN
     };
+
+
+    // --- Helper to convert token ID to string ---
+    static const char* match_id_to_string(match_id_type id) {
+        switch (id) {
+            case match_id_type::NUMBER: return "NUMBER";
+            case match_id_type::IDENTIFIER: return "IDENTIFIER";
+            case match_id_type::PLUS: return "PLUS";
+            case match_id_type::MINUS: return "MINUS";
+            case match_id_type::MUL: return "MUL";
+            case match_id_type::DIV: return "DIV";
+            case match_id_type::LEFT_PAREN: return "LEFT_PAREN";
+            case match_id_type::RIGHT_PAREN: return "RIGHT_PAREN";
+            case match_id_type::LEFT_BRACE: return "LEFT_BRACE";
+            case match_id_type::RIGHT_BRACE: return "RIGHT_BRACE";
+            case match_id_type::SEMICOLON: return "SEMICOLON";
+            case match_id_type::COMMA: return "COMMA";
+            case match_id_type::IF: return "IF";
+            case match_id_type::ELSE: return "ELSE";
+            case match_id_type::WHILE: return "WHILE";
+            case match_id_type::FOR: return "FOR";
+            case match_id_type::RETURN: return "RETURN";
+            case match_id_type::CLASS: return "CLASS";
+        }
+        // Fallback for any unknown ID
+        return "UNKNOWN_TOKEN";
+    }
+
 
     // --- Keyword map (string -> match_id_type) ---
     static const std::unordered_map<std::string, match_id_type>& keyword_map() {
@@ -136,7 +163,7 @@ void test_cpp_lexer() {
     for (const auto& token : result.parsed_tokens) {
         std::string text(token.begin(), token.end());
         std::cout << "[" << index++ << "] id="
-                  << static_cast<int>(token.id())
+                  << cpp_lexer_grammar::match_id_to_string(token.id()) // <-- Using the string name
                   << " text='" << text << "'\n";
     }
 
@@ -162,6 +189,7 @@ public:
 
     enum class match_id_type {
         VAR_DECL,
+        FUNC_DECL,
         FUNC_DEF,
         BLOCK,
         CLASS_DEF,
@@ -178,12 +206,28 @@ public:
         return instance<ParseContext>().parse(pc);
     }
 
-    // --- AST printer ---
+    // --- Helper to convert enum to string ---
+    static const char* match_id_to_string(match_id_type id) {
+        switch (id) {
+            case match_id_type::VAR_DECL: return "VAR_DECL";
+            case match_id_type::FUNC_DECL: return "FUNC_DECL";
+            case match_id_type::FUNC_DEF: return "FUNC_DEF";
+            case match_id_type::BLOCK: return "BLOCK";
+            case match_id_type::CLASS_DEF: return "CLASS_DEF";
+            case match_id_type::TOP_LEVEL: return "TOP_LEVEL";
+        }
+        return "UNKNOWN";
+    }
+
+    // --- AST printer (Modified) ---
     template <typename Node>
     static void print_ast(const Node& node, int indent = 0) {
         std::string space(indent, ' ');
-        std::cout << space << static_cast<int>(node->id())
+
+        // CHANGE: Use the helper function instead of casting to int
+        std::cout << space << match_id_to_string(node->id())
                   << " \"" << node->source() << "\"\n";
+
         for (auto& c : node->children())
             print_ast(c, indent + 2);
     }
@@ -203,9 +247,18 @@ private:
 
             // --- Block: '{' { var_decl | func_def } '}'
             block = (terminal(id_type::LEFT_BRACE)
-                     >> *(var_decl | func_def)
+                     >> *(var_decl | func_def | func_decl)
                      >> terminal(id_type::RIGHT_BRACE))
                      ->*match_id_type::BLOCK;
+
+                        // --- Function definition: <type> <id> '(' ')' ';';
+            func_decl = (terminal(id_type::IDENTIFIER)
+                        >> terminal(id_type::IDENTIFIER)
+                        >> terminal(id_type::LEFT_PAREN)
+                        >> terminal(id_type::RIGHT_PAREN)
+                        >> terminal(id_type::SEMICOLON))
+                        ->*match_id_type::FUNC_DECL;
+
 
             // --- Function definition: <type> <id> '(' ')' block
             func_def = (terminal(id_type::IDENTIFIER)
@@ -228,6 +281,7 @@ private:
                             class_def
                             | func_def
                             | var_decl
+                            | func_decl
                          ))
                          ->*match_id_type::TOP_LEVEL;
         }
@@ -238,7 +292,7 @@ private:
         }
 
     private:
-        rule<ParseContext> var_decl, func_def, block, class_def, top_level;
+        rule<ParseContext> var_decl, func_decl, func_def, block, class_def, top_level;
     };
 };
 
