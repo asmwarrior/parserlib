@@ -22,9 +22,10 @@ source_type src = R"(class MyClass {
     int x;
     void bar() { })";
 
-// --- Lexer grammar ---
+// --- Lexer grammar (Unchanged) ---
 class cpp_lexer_grammar {
 public:
+    // ... (omitted for brevity, assume the original code is here) ...
     // --- Token IDs ---
     enum class match_id_type {
         NUMBER,
@@ -83,8 +84,8 @@ public:
     // --- Keyword map (string -> match_id_type) ---
     static const std::unordered_map<std::string, match_id_type>& keyword_map() {
         static const std::unordered_map<std::string, match_id_type> map{
-            {"if",     match_id_type::IF},
-            {"else",   match_id_type::ELSE},
+            {"if",      match_id_type::IF},
+            {"else",    match_id_type::ELSE},
             {"while",  match_id_type::WHILE},
             {"for",    match_id_type::FOR},
             {"return", match_id_type::RETURN},
@@ -120,8 +121,8 @@ public:
 
         // Token: number, identifier, symbols
         const auto token = number | identifier
-                         | plus | minus | mul | div
-                         | lparen | rparen | lbrace | rbrace | semicolon | comma;
+                             | plus | minus | mul | div
+                             | lparen | rparen | lbrace | rbrace | semicolon | comma;
 
         // Grammar: zero or more tokens or whitespace
         const auto grammar = *(+whitespace | token);
@@ -181,8 +182,8 @@ void test_cpp_lexer() {
               << std::distance(src.begin(), result.parse_position) << "\n";
 }
 
-
-// --- Parser grammar ---
+// ----------------------------------------------------------------------
+// --- Parser grammar (Unchanged) ---
 class cpp_parser_grammar {
 public:
     using lexer_grammar = cpp_lexer_grammar;
@@ -219,12 +220,12 @@ public:
         return "UNKNOWN";
     }
 
-    // --- AST printer (Modified) ---
+    // --- AST printer (Modified, now a free function for reuse) ---
     template <typename Node>
     static void print_ast(const Node& node, int indent = 0) {
         std::string space(indent, ' ');
 
-        // CHANGE: Use the helper function instead of casting to int
+        // Use the helper function instead of casting to int
         std::cout << space << match_id_to_string(node->id())
                   << " \"" << node->source() << "\"\n";
 
@@ -251,9 +252,9 @@ private:
                      >> terminal(id_type::RIGHT_BRACE))
                      ->*match_id_type::BLOCK;
 
-                        // --- Function definition: <type> <id> '(' ')' ';';
+                        // --- Function declaration: <type> <id> '(' ')' ';';
             func_decl = (terminal(id_type::IDENTIFIER)
-                        >> terminal(id_type::IDENTIFIER)
+                        >> debug(terminal(id_type::IDENTIFIER))
                         >> terminal(id_type::LEFT_PAREN)
                         >> terminal(id_type::RIGHT_PAREN)
                         >> terminal(id_type::SEMICOLON))
@@ -282,8 +283,8 @@ private:
                             | func_def
                             | var_decl
                             | func_decl
-                         ))
-                         ->*match_id_type::TOP_LEVEL;
+                          ))
+                          ->*match_id_type::TOP_LEVEL;
         }
 
         parse_result parse(ParseContext& pc) noexcept {
@@ -296,11 +297,142 @@ private:
     };
 };
 
+// ----------------------------------------------------------------------
+// AST Visitor Implementation
+// ----------------------------------------------------------------------
 
+/**
+ * @brief Base AST Visitor class.
+ *
+ * This provides the interface for visiting each specific node type.
+ * Note: Node is expected to be an AST node wrapper (e.g., std::shared_ptr<...>)
+ * based on the usage in cpp_parser_grammar::print_ast.
+ */
+template <typename Node>
+class AstVisitor {
+public:
+    using MatchId = typename cpp_parser_grammar::match_id_type;
 
+    virtual ~AstVisitor() = default;
+
+    // General visit function (dispatches to specific visit methods)
+    void visit(const Node& node) {
+        switch (node->id()) {
+            case MatchId::TOP_LEVEL: visit_top_level(node); break;
+            case MatchId::CLASS_DEF: visit_class_def(node); break;
+            case MatchId::VAR_DECL:  visit_var_decl(node); break;
+            case MatchId::FUNC_DECL: visit_func_decl(node); break;
+            case MatchId::FUNC_DEF:  visit_func_def(node); break;
+            case MatchId::BLOCK:     visit_block(node); break;
+            default:
+                // Handle unexpected or generic nodes
+                std::cout << "Warning: Unhandled node type: "
+                          << cpp_parser_grammar::match_id_to_string(node->id()) << "\n";
+                visit_generic(node);
+                break;
+        }
+    }
+
+protected:
+    // Fallback for nodes that don't have a specific handler
+    virtual void visit_generic(const Node& node) {
+        // Default behavior: just traverse children
+        for (const auto& child : node->children()) {
+            visit(child);
+        }
+    }
+
+    // Specific visit methods (Override these in derived classes)
+    virtual void visit_top_level(const Node& node) { visit_generic(node); }
+    virtual void visit_class_def(const Node& node) { visit_generic(node); }
+    virtual void visit_var_decl(const Node& node)  { visit_generic(node); }
+    virtual void visit_func_decl(const Node& node) { visit_generic(node); }
+    virtual void visit_func_def(const Node& node)  { visit_generic(node); }
+    virtual void visit_block(const Node& node)     { visit_generic(node); }
+};
+
+/**
+ * @brief Concrete Visitor to print the AST structure and a summary.
+ */
+template <typename Node>
+class AstPrinterVisitor : public AstVisitor<Node> {
+    using Base = AstVisitor<Node>;
+    int indent_level = 0;
+
+    void print_node(const Node& node, const std::string& type_name) {
+        std::string space(indent_level * 2, ' ');
+        std::cout << space << "-> " << type_name
+                  << " [" << node->source() << "]\n";
+    }
+
+public:
+    void traverse_children(const Node& node) {
+        indent_level++;
+        for (const auto& child : node->children()) {
+            this->visit(child); // Use this-> for base class call
+        }
+        indent_level--;
+    }
+
+protected:
+    void visit_top_level(const Node& node) override {
+        print_node(node, "TOP_LEVEL");
+        traverse_children(node);
+    }
+
+    void visit_class_def(const Node& node) override {
+        // Children: [0] = 'class', [1] = IDENTIFIER (Class Name), [2] = BLOCK
+        std::cout << std::string(indent_level * 2, ' ')
+                  << "-> CLASS_DEF: " << node->children()[1]->source() << "\n";
+        traverse_children(node);
+    }
+
+    void visit_var_decl(const Node& node) override {
+        // Children: [0] = IDENTIFIER (Type), [1] = IDENTIFIER (Name), [2] = SEMICOLON
+        std::cout << std::string(indent_level * 2, ' ')
+                  << "-> VAR_DECL: Type='" << node->children()[0]->source()
+                  << "', Name='" << node->children()[1]->source() << "'\n";
+    }
+
+    void visit_func_decl(const Node& node) override {
+        // Children: [0] = IDENTIFIER (Return Type), [1] = IDENTIFIER (Name), ...
+        std::cout << std::string(indent_level * 2, ' ')
+                  << "-> FUNC_DECL: ReturnType='" << node->children()[0]->source()
+                  << "', Name='" << node->children()[1]->source() << "'\n";
+    }
+
+    void visit_func_def(const Node& node) override {
+        // Children: [0] = IDENTIFIER (Return Type), [1] = IDENTIFIER (Name), ..., [4] = BLOCK
+        std::cout << std::string(indent_level * 2, ' ')
+                  << "-> FUNC_DEF: ReturnType='" << node->children()[0]->source()
+                  << "', Name='" << node->children()[1]->source() << "'\n";
+        traverse_children(node); // Traverses the BLOCK child
+    }
+
+    void visit_block(const Node& node) override {
+        print_node(node, "BLOCK");
+        traverse_children(node);
+    }
+
+    void visit_generic(const Node& node) override {
+        // This is primarily for skipping non-structural elements like terminal tokens
+        // which often don't need dedicated handling in a high-level AST visitor.
+        // For example, in the ClassDef, we skip the 'class' token and the braces.
+        // We only traverse children for non-terminal nodes that are structural.
+
+        // If a node is a structural node but has no specific handler,
+        // we can still traverse its children.
+        if (node->children().size() > 0) {
+            traverse_children(node);
+        }
+    }
+};
+
+// ----------------------------------------------------------------------
 
 using parser_type = parser<source_type, cpp_lexer_grammar, cpp_parser_grammar>;
 
+// ... (test_cpp_lexer is here) ...
 
 void test_cpp_parser() {
     using namespace parserlib;
@@ -309,9 +441,22 @@ void test_cpp_parser() {
 
     if (result.success && !result.ast_nodes.empty()) {
         std::cout << "Parsing succeeded!\n";
+        std::cout << "\n=== AST Printing (Original Recursive Function) ===\n";
         for (auto &node : result.ast_nodes)
             cpp_parser_grammar::print_ast(node);
+
+        // -------------------------------------------------------------------
+        // New: AST Visitor Test
+        // -------------------------------------------------------------------
+        std::cout << "\n=== AST Traversal (Visitor Pattern) ===\n";
+        using AstNodePtr = decltype(result.ast_nodes)::value_type;
+        AstPrinterVisitor<AstNodePtr> visitor;
+
+        for (auto &node : result.ast_nodes)
+            visitor.visit(node);
+
     } else {
+        // ... (Error handling code remains the same) ...
         std::cout << "Parsing failed.\n";
 
     // --- Debug: locate token near parse_position ---
@@ -385,10 +530,9 @@ void test_cpp_parser() {
 }
 
 
-
-
 int main() {
     test_cpp_lexer();
+    std::cout << "\n----------------------------------------\n";
     test_cpp_parser();
     return 0;
 }
