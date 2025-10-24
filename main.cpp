@@ -194,6 +194,7 @@ public:
         FUNC_DEF,
         BLOCK,
         CLASS_DEF,
+        CLASS_ID,
         TOP_LEVEL
     };
 
@@ -215,6 +216,7 @@ public:
             case match_id_type::FUNC_DEF: return "FUNC_DEF";
             case match_id_type::BLOCK: return "BLOCK";
             case match_id_type::CLASS_DEF: return "CLASS_DEF";
+            case match_id_type::CLASS_ID: return "CLASS_ID";
             case match_id_type::TOP_LEVEL: return "TOP_LEVEL";
         }
         return "UNKNOWN";
@@ -226,7 +228,7 @@ public:
         std::string space(indent, ' ');
 
         // Use the helper function instead of casting to int
-        std::cout << space << match_id_to_string(node->id())
+        std::cout << space << match_id_to_string(node->id()) << space << node->children().size()
                   << " \"" << node->source() << "\"\n";
 
         for (auto& c : node->children())
@@ -272,7 +274,7 @@ private:
 
             // --- Class definition: 'class' IDENTIFIER block
             class_def = (terminal(id_type::CLASS)
-                         >> terminal(id_type::IDENTIFIER)
+                         >> terminal(id_type::IDENTIFIER) ->* match_id_type::CLASS_ID
                          >> block
                          >> -terminal(id_type::SEMICOLON))  // optional semicolon)
                          ->*match_id_type::CLASS_DEF;
@@ -320,6 +322,7 @@ public:
         switch (node->id()) {
             case MatchId::TOP_LEVEL: visit_top_level(node); break;
             case MatchId::CLASS_DEF: visit_class_def(node); break;
+            case MatchId::CLASS_ID:  visit_class_id(node); break;
             case MatchId::VAR_DECL:  visit_var_decl(node); break;
             case MatchId::FUNC_DECL: visit_func_decl(node); break;
             case MatchId::FUNC_DEF:  visit_func_def(node); break;
@@ -345,6 +348,7 @@ protected:
     // Specific visit methods (Override these in derived classes)
     virtual void visit_top_level(const Node& node) { visit_generic(node); }
     virtual void visit_class_def(const Node& node) { visit_generic(node); }
+    virtual void visit_class_id(const Node& node) { visit_generic(node); }
     virtual void visit_var_decl(const Node& node)  { visit_generic(node); }
     virtual void visit_func_decl(const Node& node) { visit_generic(node); }
     virtual void visit_func_def(const Node& node)  { visit_generic(node); }
@@ -383,29 +387,32 @@ protected:
     void visit_class_def(const Node& node) override {
         // Children: [0] = 'class', [1] = IDENTIFIER (Class Name), [2] = BLOCK
         std::cout << std::string(indent_level * 2, ' ')
-                  << "-> CLASS_DEF: " << node->children()[1]->source() << "\n";
+                  << "-> CLASS_DEF: " << node->children()[0]->source() << "\n";
+        traverse_children(node);
+    }
+
+    void visit_class_id(const Node& node) override {
+        std::cout << std::string(indent_level * 2, ' ')
+                  << "-> CLASS_ID: " << node->source() << "\n";
         traverse_children(node);
     }
 
     void visit_var_decl(const Node& node) override {
         // Children: [0] = IDENTIFIER (Type), [1] = IDENTIFIER (Name), [2] = SEMICOLON
         std::cout << std::string(indent_level * 2, ' ')
-                  << "-> VAR_DECL: Type='" << node->children()[0]->source()
-                  << "', Name='" << node->children()[1]->source() << "'\n";
+                  << "-> VAR_DECL: " << node->source() << "\n";
     }
 
     void visit_func_decl(const Node& node) override {
         // Children: [0] = IDENTIFIER (Return Type), [1] = IDENTIFIER (Name), ...
         std::cout << std::string(indent_level * 2, ' ')
-                  << "-> FUNC_DECL: ReturnType='" << node->children()[0]->source()
-                  << "', Name='" << node->children()[1]->source() << "'\n";
+                  << "-> FUNC_DECL: " << node->source() << "\n";
     }
 
     void visit_func_def(const Node& node) override {
         // Children: [0] = IDENTIFIER (Return Type), [1] = IDENTIFIER (Name), ..., [4] = BLOCK
         std::cout << std::string(indent_level * 2, ' ')
-                  << "-> FUNC_DEF: ReturnType='" << node->children()[0]->source()
-                  << "', Name='" << node->children()[1]->source() << "'\n";
+                  << "-> FUNC_DEF: " << node->source() << "'\n";
         traverse_children(node); // Traverses the BLOCK child
     }
 
