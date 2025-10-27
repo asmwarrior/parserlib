@@ -33,6 +33,20 @@
 			<Add option="-fexceptions" />
 			<Add directory="include" />
 		</Compiler>
+		<Unit filename="include/languages/ebnf_parser.hpp" />
+		<Unit filename="include/parserlib.hpp" />
+		<Unit filename="include/parserlib/ast.hpp" />
+		<Unit filename="include/parserlib/binary_parse_nodes.hpp" />
+		<Unit filename="include/parserlib/error_handling_parse_nodes.hpp" />
+		<Unit filename="include/parserlib/lexer_parser.hpp" />
+		<Unit filename="include/parserlib/other_parse_nodes.hpp" />
+		<Unit filename="include/parserlib/parse_context.hpp" />
+		<Unit filename="include/parserlib/parse_node.hpp" />
+		<Unit filename="include/parserlib/rule.hpp" />
+		<Unit filename="include/parserlib/strings.hpp" />
+		<Unit filename="include/parserlib/terminal_parse_nodes.hpp" />
+		<Unit filename="include/parserlib/unary_parse_nodes.hpp" />
+		<Unit filename="include/parserlib/utility.hpp" />
 		<Unit filename="main.cpp" />
 		<Extensions />
 	</Project>
