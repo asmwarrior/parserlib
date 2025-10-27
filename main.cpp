@@ -20,7 +20,10 @@ source_type src = R"(class MyClass {
     }
 
     int x;
-    void bar() { })";
+    void bar() {
+        int c;
+        double d;
+    })";
 
 // --- Lexer grammar (Unchanged) ---
 class cpp_lexer_grammar {
@@ -193,6 +196,7 @@ public:
         FUNC_DECL,
         FUNC_DEF,
         BLOCK,
+        BLOCK_SKIP, // skipped function bodies
         CLASS_DEF,
         CLASS_ID,
         TOP_LEVEL
@@ -215,6 +219,7 @@ public:
             case match_id_type::FUNC_DECL: return "FUNC_DECL";
             case match_id_type::FUNC_DEF: return "FUNC_DEF";
             case match_id_type::BLOCK: return "BLOCK";
+            case match_id_type::BLOCK_SKIP: return "BLOCK_SKIP";
             case match_id_type::CLASS_DEF: return "CLASS_DEF";
             case match_id_type::CLASS_ID: return "CLASS_ID";
             case match_id_type::TOP_LEVEL: return "TOP_LEVEL";
@@ -242,6 +247,36 @@ private:
         instance() {
             using id_type = typename lexer_grammar::match_id_type;
 
+            // --- Custom rule to skip a block based on nested brace levels ---
+            block_skip_rule = function([](auto& pc) -> parse_result {
+                using id_type = typename cpp_lexer_grammar::match_id_type;
+
+                // The rule must start with the opening brace token
+                if (!pc.is_valid_parse_position() || pc.parse_position()->id() != id_type::LEFT_BRACE) {
+                    return false;
+                }
+
+                pc.increment_parse_position(); // Consume the initial '{'
+                int brace_level = 1; // Start at 1, as the first '{' has been consumed
+
+                // Loop through tokens until the brace level returns to 0
+                while (brace_level > 0 && pc.is_valid_parse_position()) {
+                    const auto token_id = pc.parse_position()->id();
+
+                    if (token_id == id_type::LEFT_BRACE) {
+                        brace_level++;
+                    } else if (token_id == id_type::RIGHT_BRACE) {
+                        brace_level--;
+                    }
+
+                    pc.increment_parse_position(); // Consume the current token (brace or content)
+                }
+
+                // Success if the matching '}' was found (brace_level is 0)
+                return brace_level == 0;
+            });
+
+
             // --- Variable declaration: <type> <id> ';'
             var_decl = (terminal(id_type::IDENTIFIER)
                         >> terminal(id_type::IDENTIFIER)
@@ -254,13 +289,13 @@ private:
                      >> terminal(id_type::RIGHT_BRACE))
                      ->*match_id_type::BLOCK;
 
-                        // --- Function declaration: <type> <id> '(' ')' ';';
+            // --- Function declaration: <type> <id> '(' ')' ';';
             func_decl = (terminal(id_type::IDENTIFIER)
-                        >> debug(terminal(id_type::IDENTIFIER))
-                        >> terminal(id_type::LEFT_PAREN)
-                        >> terminal(id_type::RIGHT_PAREN)
-                        >> terminal(id_type::SEMICOLON))
-                        ->*match_id_type::FUNC_DECL;
+                         >> debug(terminal(id_type::IDENTIFIER))
+                         >> terminal(id_type::LEFT_PAREN)
+                         >> terminal(id_type::RIGHT_PAREN)
+                         >> terminal(id_type::SEMICOLON))
+                         ->* match_id_type::FUNC_DECL;
 
 
             // --- Function definition: <type> <id> '(' ')' block
@@ -268,16 +303,16 @@ private:
                         >> terminal(id_type::IDENTIFIER)
                         >> terminal(id_type::LEFT_PAREN)
                         >> terminal(id_type::RIGHT_PAREN)
-                        >> block
-                        >> -terminal(id_type::SEMICOLON))  // optional semicolon))
-                        ->*match_id_type::FUNC_DEF;
+                        >> (block_skip_rule->*match_id_type::BLOCK_SKIP)
+                        >> -terminal(id_type::SEMICOLON)) // optional semicolon
+                        ->* match_id_type::FUNC_DEF;
 
             // --- Class definition: 'class' IDENTIFIER block
             class_def = (terminal(id_type::CLASS)
                          >> terminal(id_type::IDENTIFIER) ->* match_id_type::CLASS_ID
                          >> block
-                         >> -terminal(id_type::SEMICOLON))  // optional semicolon)
-                         ->*match_id_type::CLASS_DEF;
+                         >> -terminal(id_type::SEMICOLON)) // optional semicolon
+                         ->* match_id_type::CLASS_DEF;
 
             // --- Top-level declarations: { class_def | func_def | var_decl }+
             top_level = (+(
@@ -295,9 +330,10 @@ private:
         }
 
     private:
-        rule<ParseContext> var_decl, func_decl, func_def, block, class_def, top_level;
+        rule<ParseContext> var_decl, func_decl, func_def, block, class_def, top_level, block_skip_rule;
     };
 };
+
 
 // ----------------------------------------------------------------------
 // AST Visitor Implementation
@@ -327,6 +363,7 @@ public:
             case MatchId::FUNC_DECL: visit_func_decl(node); break;
             case MatchId::FUNC_DEF:  visit_func_def(node); break;
             case MatchId::BLOCK:     visit_block(node); break;
+            case MatchId::BLOCK_SKIP: visit_block_skip(node); break;
             default:
                 // Handle unexpected or generic nodes
                 std::cout << "Warning: Unhandled node type: "
@@ -346,13 +383,14 @@ protected:
     }
 
     // Specific visit methods (Override these in derived classes)
-    virtual void visit_top_level(const Node& node) { visit_generic(node); }
-    virtual void visit_class_def(const Node& node) { visit_generic(node); }
-    virtual void visit_class_id(const Node& node) { visit_generic(node); }
-    virtual void visit_var_decl(const Node& node)  { visit_generic(node); }
-    virtual void visit_func_decl(const Node& node) { visit_generic(node); }
-    virtual void visit_func_def(const Node& node)  { visit_generic(node); }
-    virtual void visit_block(const Node& node)     { visit_generic(node); }
+    virtual void visit_top_level(const Node& node)  { visit_generic(node); }
+    virtual void visit_class_def(const Node& node)  { visit_generic(node); }
+    virtual void visit_class_id(const Node& node)   { visit_generic(node); }
+    virtual void visit_var_decl(const Node& node)   { visit_generic(node); }
+    virtual void visit_func_decl(const Node& node)  { visit_generic(node); }
+    virtual void visit_func_def(const Node& node)   { visit_generic(node); }
+    virtual void visit_block(const Node& node)      { visit_generic(node); }
+    virtual void visit_block_skip(const Node& node) { visit_generic(node); }
 };
 
 /**
@@ -410,15 +448,20 @@ protected:
     }
 
     void visit_func_def(const Node& node) override {
-        // Children: [0] = IDENTIFIER (Return Type), [1] = IDENTIFIER (Name), ..., [4] = BLOCK
+        // Children: [0] = IDENTIFIER (Return Type), [1] = IDENTIFIER (Name), ..., [4] = BLOCK_SKIP
         std::cout << std::string(indent_level * 2, ' ')
                   << "-> FUNC_DEF: " << node->source() << "'\n";
-        traverse_children(node); // Traverses the BLOCK child
+        traverse_children(node); // Traverses the BLOCK_SKIP child
     }
 
     void visit_block(const Node& node) override {
         print_node(node, "BLOCK");
         traverse_children(node);
+    }
+
+    void visit_block_skip(const Node& node) override {
+        print_node(node, "BLOCK_SKIP (Skipped)");
+        // No traverse_children here, as the contents were skipped by the parser.
     }
 
     void visit_generic(const Node& node) override {
@@ -434,6 +477,7 @@ protected:
         }
     }
 };
+
 
 // ----------------------------------------------------------------------
 
