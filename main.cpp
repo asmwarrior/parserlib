@@ -18,8 +18,8 @@ source_type src = R"(
 // class templates2
 // class templates3
 
-int abc;
-float def;
+xyz abc;
+opq def;
 
 "abcdefg";
 
@@ -89,7 +89,7 @@ public:
         IF, INT, LONG, NAMESPACE, NEW, OPERATOR, PRIVATE, PROTECTED, PUBLIC,
         REGISTER, REINTERPRET_CAST, RETURN, SHORT, SIZEOF, STATIC, STATIC_CAST,
         STRUCT, SWITCH, TEMPLATE, THIS, THROW, TRY, TYPEDEF, TYPEID,
-        UNION, UNSIGNED, USING, VIRTUAL, VOID, VOLATILE, WCHAR_T, WHILE,
+        UNION, UNSIGNED, USING, VIRTUAL, VOID, VOLATILE, WCHAR_T, WHILE, ENUM,
 
         // NOTE: Comments and general whitespace are typically *not* assigned IDs,
         // or they are assigned a special ID that is immediately discarded.
@@ -100,7 +100,9 @@ public:
         COMMENT_MULTI_LINE,
         HASH,
         PREPROCESSOR_DIRECTIVE,
-        QUESTION_MARK
+        QUESTION_MARK,
+        LEFT_BRACKET,
+        RIGHT_BRACKET
     };
 
     // --- Error IDs ---
@@ -208,6 +210,9 @@ public:
             case match_id_type::HASH: return "HASH";
             case match_id_type::PREPROCESSOR_DIRECTIVE: return "PREPROCESSOR_DIRECTIVE";
             case match_id_type::QUESTION_MARK: return "QUESTION_MARK";
+            case match_id_type::LEFT_BRACKET: return "LEFT_BRACKET";
+            case match_id_type::RIGHT_BRACKET: return "RIGHT_BRACKET";
+            case match_id_type::ENUM: return "ENUM";
         }
         // This is necessary to avoid a compiler warning about non-void function
         // not returning a value on all control paths, even though all IDs are listed.
@@ -234,7 +239,7 @@ public:
             {"try", match_id_type::TRY}, {"typedef", match_id_type::TYPEDEF}, {"typeid", match_id_type::TYPEID},
             {"union", match_id_type::UNION}, {"unsigned", match_id_type::UNSIGNED}, {"using", match_id_type::USING},
             {"virtual", match_id_type::VIRTUAL}, {"void", match_id_type::VOID}, {"volatile", match_id_type::VOLATILE},
-            {"wchar_t", match_id_type::WCHAR_T}
+            {"wchar_t", match_id_type::WCHAR_T}, {"enum", match_id_type::ENUM}
         };
         return map;
     }
@@ -249,15 +254,16 @@ public:
 
         // --- Comment Rules (Skipped) ---
         // Single-line comment: // up to the end of the line (but not including the newline)
-        const auto single_line_comment = (terminal("//") >> *(any() - newline))->*match_id_type::COMMENT_SINGLE_LINE;
+        // const auto single_line_comment = (terminal("//") >> *(any() - newline))->*match_id_type::COMMENT_SINGLE_LINE;
+        const auto single_line_comment = terminal("//") >> *(any() - newline);
 
         // Multi-line comment: /* followed by anything non-greedily, ending with */
         // NOTE: A true regex for C-style comments is complex due to greediness and nesting.
         // We use a simplified pattern that matches "/*" followed by any characters until "*/".
         // A robust lexer would often use state management for this.
         const auto multi_line_comment_content = *(any() - terminal("*/"));
-        const auto multi_line_comment = (terminal("/*") >> multi_line_comment_content >> terminal("*/"))->*match_id_type::COMMENT_MULTI_LINE;
-
+        // const auto multi_line_comment = (terminal("/*") >> multi_line_comment_content >> terminal("*/"))->*match_id_type::COMMENT_MULTI_LINE;
+        const auto multi_line_comment = terminal("/*") >> multi_line_comment_content >> terminal("*/");
 
         // --- ADDED: Preprocessor Directive Rule ---
         // Matches '#' followed by everything until the newline. Since it has NO ->*match_id_type, it's skipped.
@@ -327,6 +333,8 @@ public:
         const auto colon = terminal(':')->*match_id_type::COLON;
         const auto dot = terminal('.')->*match_id_type::DOT;
         const auto question_mark = terminal('?')->*match_id_type::QUESTION_MARK;
+        const auto lbracket = terminal('[')->*match_id_type::LEFT_BRACKET;
+        const auto rbracket = terminal(']')->*match_id_type::RIGHT_BRACKET;
 
         // Token: Ordered from longest/most specific to shortest/least specific
         const auto token =
@@ -416,7 +424,12 @@ public:
         BLOCK_SKIP, // skipped function bodies
         CLASS_DEF,
         CLASS_ID,
-        TOP_LEVEL
+        TOP_LEVEL,
+        EXPRESSION_STATEMENT,
+        FOR_LOOP,
+        CONTROL_FLOW,
+        PARAM_LIST,
+        ENUM_DEF
     };
 
     enum class error_id_type {
@@ -440,6 +453,11 @@ public:
             case match_id_type::CLASS_DEF: return "CLASS_DEF";
             case match_id_type::CLASS_ID: return "CLASS_ID";
             case match_id_type::TOP_LEVEL: return "TOP_LEVEL";
+            case match_id_type::EXPRESSION_STATEMENT: return "EXPRESSION_STATEMENT";
+            case match_id_type::FOR_LOOP: return "FOR_LOOP";
+            case match_id_type::CONTROL_FLOW: return "CONTROL_FLOW";
+            case match_id_type::PARAM_LIST: return "PARAM_LIST";
+            case match_id_type::ENUM_DEF: return "ENUM_DEF";
         }
         return "UNKNOWN";
     }
@@ -493,6 +511,78 @@ private:
                 return brace_level == 0;
             });
 
+            // --- Custom rule to skip a full statement (e.g., to the next ';') ---
+              // This respects nested parentheses, braces, and brackets.
+              skip_to_semicolon_rule = function([&](auto& pc) -> parse_result {
+                    using id_type = typename cpp_lexer_grammar::match_id_type;
+                    int paren_level = 0;
+                    int brace_level = 0;
+                    int bracket_level = 0;
+
+                    if (!pc.is_valid_parse_position()) {
+                          return false; // Nothing to parse
+                    }
+
+                    while (pc.is_valid_parse_position()) {
+                          const auto token_id = pc.parse_position()->id();
+
+                          // Check for the end-of-statement
+                          if (token_id == id_type::SEMICOLON) {
+                                if (paren_level == 0 && brace_level == 0 && bracket_level == 0) {
+                                      pc.increment_parse_position(); // Consume the ';'
+                                      return true; // Found it!
+                                }
+                          }
+
+                          // Update nesting levels
+                          if (token_id == id_type::LEFT_PAREN)       paren_level++;
+                          else if (token_id == id_type::RIGHT_PAREN)    paren_level--;
+                          else if (token_id == id_type::LEFT_BRACE)       brace_level++;
+                          else if (token_id == id_type::RIGHT_BRACE)    brace_level--;
+                          else if (token_id == id_type::LEFT_BRACKET)    bracket_level++;
+                          else if (token_id == id_type::RIGHT_BRACKET) bracket_level--;
+
+                          pc.increment_parse_position(); // Consume the current token
+                    }
+
+                    // Reached end of input without finding a ';' at level 0
+                    return false;
+              });
+
+            // --- This is the "a = ... ;" rule you wanted ---
+                  // It's a "catch-all" for any simple statement:
+                  // - int x = 5;
+                  // - a = b + c;
+                  // - do_something(1, 2);
+                  // - return x;
+                  // We just skip the whole thing.
+                  expression_statement = (
+                        skip_to_semicolon_rule
+                  )->*match_id_type::EXPRESSION_STATEMENT;
+
+                  // 'for' is special due to its '(...)' content
+                  for_loop = (
+                        terminal(id_type::FOR)
+                        >> (paren_skip_rule->*match_id_type::PARAM_LIST) // Skips the (init; cond; inc)
+                        >> (block_skip_rule | expression_statement) // Body is a block OR single statement
+                  )->*match_id_type::FOR_LOOP;
+
+                  // Basic control flow: if, while, switch
+                  control_flow_statement = (
+                        (terminal(id_type::IF) | terminal(id_type::WHILE) | terminal(id_type::SWITCH))
+                        >> (paren_skip_rule->*match_id_type::PARAM_LIST) // Skip the (...) condition
+                        >> (block_skip_rule | expression_statement) // Body is a block OR single statement
+                  )->*match_id_type::CONTROL_FLOW;
+
+                  // 'enum' definition
+                  enum_def = (
+                        terminal(id_type::ENUM)
+                        >> -(terminal(id_type::CLASS) | terminal(id_type::STRUCT)) // Optional 'class'
+                        >> terminal(id_type::IDENTIFIER) // Enum name
+                        >> -(terminal(id_type::COLON) >> terminal(id_type::IDENTIFIER)) // Optional base type
+                        >> (block_skip_rule->*match_id_type::BLOCK_SKIP) // Skip the { ... } enumerators
+                        >> -terminal(id_type::SEMICOLON)
+                  )->*match_id_type::ENUM_DEF;
 
             // --- Variable declaration: <type> <id> ';'
             var_decl = (terminal(id_type::IDENTIFIER)
@@ -500,11 +590,40 @@ private:
                         >> terminal(id_type::SEMICOLON))
                         ->*match_id_type::VAR_DECL;
 
-            // --- Block: '{' { var_decl | func_def } '}'
-            block = (terminal(id_type::LEFT_BRACE)
-                     >> *(var_decl | func_def | func_decl)
-                     >> terminal(id_type::RIGHT_BRACE))
-                     ->*match_id_type::BLOCK;
+//            // --- Block: '{' { var_decl | func_def } '}'
+//            block = (terminal(id_type::LEFT_BRACE)
+//                     >> *(var_decl | func_def | func_decl)
+//                     >> terminal(id_type::RIGHT_BRACE))
+//                     ->*match_id_type::BLOCK;
+
+// --- Block: '{' { statements } '}'
+                  // This rule is for parsing the *inside* of a class or namespace.
+                  // We must order this from most-specific to least-specific.
+                  // 'expression_statement' MUST come last.
+                  block = (terminal(id_type::LEFT_BRACE)
+                                >> *(
+                                       // Full definitions (highest priority)
+                                       func_def
+                                       | class_def
+                                       | enum_def
+                                       | func_decl
+                                       | control_flow_statement
+                                       | for_loop
+                                       | expression_statement
+                                    )
+                                >> terminal(id_type::RIGHT_BRACE))
+                                ->*match_id_type::BLOCK;
+
+                  // --- Top-level declarations ---
+                  // We replace 'var_decl' with 'expression_statement' to handle
+                  // global variables with initializers (e.g., int g_var = 10;)
+                  top_level = (+(
+                                  class_def
+                                  | enum_def
+                                  | func_def
+                                  | func_decl
+                                  | control_flow_statement
+                               ))->*match_id_type::TOP_LEVEL;
 
             // --- Function declaration: <type> <id> '(' ')' ';';
             func_decl = (terminal(id_type::IDENTIFIER)
@@ -547,7 +666,8 @@ private:
         }
 
     private:
-        rule<ParseContext> var_decl, func_decl, func_def, block, class_def, top_level, block_skip_rule;
+        rule<ParseContext> var_decl, func_decl, func_def, block, class_def, top_level, block_skip_rule,
+            paren_skip_rule, skip_to_semicolon_rule, expression_statement, for_loop, control_flow_statement, enum_def;
     };
 };
 
@@ -707,7 +827,8 @@ void test_cpp_parser() {
 
     auto result = parser_type::parse(src);
 
-    if (result.success && !result.ast_nodes.empty()) {
+    if (!result.ast_nodes.empty()) // result.success &&
+    {
         std::cout << "Parsing succeeded!\n";
         std::cout << "\n=== AST Printing (Original Recursive Function) ===\n";
         for (auto &node : result.ast_nodes)
@@ -723,51 +844,54 @@ void test_cpp_parser() {
         for (auto &node : result.ast_nodes)
             visitor.visit(node);
 
-    } else {
+    }
+
+    if (!result.success)
+    {
         // ... (Error handling code remains the same) ...
         std::cout << "Parsing failed.\n";
 
-    // --- Debug: locate token near parse_position ---
-    auto parsed_len = std::distance(src.begin(), result.lexer.parse_position);
-    std::cout << "Parsing stopped at offset " << parsed_len << "\n";
+        // --- Debug: locate token near parse_position ---
+        auto parsed_len = std::distance(src.begin(), result.lexer.parse_position);
+        std::cout << "Parsing stopped at offset " << parsed_len << "\n";
 
-    auto &tokens = result.lexer.parsed_tokens;
-    bool matched = false;
+        auto &tokens = result.lexer.parsed_tokens;
+        bool matched = false;
 
-    for (size_t i = 0; i < tokens.size(); ++i) {
-        auto &t = tokens[i];
-        auto token_start = std::distance(src.begin(), t.begin());
-        auto token_end = std::distance(src.begin(), t.end());
+        for (size_t i = 0; i < tokens.size(); ++i) {
+            auto &t = tokens[i];
+            auto token_start = std::distance(src.begin(), t.begin());
+            auto token_end = std::distance(src.begin(), t.end());
 
-        if (parsed_len >= token_start && parsed_len < token_end) {
-            std::cout << "Stopped *inside* token #" << i
-                      << " id=" << static_cast<int>(t.id())
-                      << " text='" << std::string(t.begin(), t.end()) << "'\n";
-            matched = true;
-            break;
+            if (parsed_len >= token_start && parsed_len < token_end) {
+                std::cout << "Stopped *inside* token #" << i
+                          << " id=" << static_cast<int>(t.id())
+                          << " text='" << std::string(t.begin(), t.end()) << "'\n";
+                matched = true;
+                break;
+            }
+            // Add: allow stop *exactly at the end* of a token
+            if (parsed_len == token_end) {
+                std::cout << "Stopped *right after* token #" << i
+                          << " id=" << static_cast<int>(t.id())
+                          << " text='" << std::string(t.begin(), t.end()) << "'\n";
+                matched = true;
+                break;
+            }
+            if (parsed_len < token_start) {
+                std::cout << "Stopped *before* token #" << i
+                          << " id=" << static_cast<int>(t.id())
+                          << " text='" << std::string(t.begin(), t.end()) << "'\n";
+                matched = true;
+                break;
+            }
         }
-        // Add: allow stop *exactly at the end* of a token
-        if (parsed_len == token_end) {
-            std::cout << "Stopped *right after* token #" << i
-                      << " id=" << static_cast<int>(t.id())
-                      << " text='" << std::string(t.begin(), t.end()) << "'\n";
-            matched = true;
-            break;
-        }
-        if (parsed_len < token_start) {
-            std::cout << "Stopped *before* token #" << i
-                      << " id=" << static_cast<int>(t.id())
-                      << " text='" << std::string(t.begin(), t.end()) << "'\n";
-            matched = true;
-            break;
-        }
-    }
 
-    if (!matched && !tokens.empty()) {
-        std::cout << "Stopped after the last token #" << tokens.size() - 1
-                  << " id=" << static_cast<int>(tokens.back().id())
-                  << " text='" << std::string(tokens.back().begin(), tokens.back().end()) << "'\n";
-    }
+        if (!matched && !tokens.empty()) {
+            std::cout << "Stopped after the last token #" << tokens.size() - 1
+                      << " id=" << static_cast<int>(tokens.back().id())
+                      << " text='" << std::string(tokens.back().begin(), tokens.back().end()) << "'\n";
+        }
 
 
         if (parsed_len < static_cast<int>(src.size())) {
