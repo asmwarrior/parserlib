@@ -1,6 +1,8 @@
 #ifndef AST_VISITOR_H
 #define AST_VISITOR_H
 
+#include "cpp_parser_grammar.h"
+
 
 // ----------------------------------------------------------------------
 // AST Visitor Implementation

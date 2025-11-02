@@ -33,7 +33,7 @@
 			<Add option="-fexceptions" />
 			<Add directory="include" />
 		</Compiler>
-		<Unit filename="cpp_common.h" />
+		<Unit filename="ast_visitor.h" />
 		<Unit filename="cpp_lexer_grammar.cpp" />
 		<Unit filename="cpp_lexer_grammar.h" />
 		<Unit filename="cpp_parser_grammar.cpp" />

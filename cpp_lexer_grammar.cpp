@@ -171,3 +171,140 @@ const std::unordered_map<std::string, cpp_lexer_grammar::match_id_type>& cpp_lex
     return map;
 }
 
+
+parse_result cpp_lexer_grammar::parse(parse_context_type& pc) const noexcept
+{
+    auto& grammar = get_grammar();
+    auto result = grammar.parse(pc);
+
+    for (auto& m : pc.matches()) {
+        if (m.id() == match_id_type::IDENTIFIER) {
+            std::string text{ parserlib::source(m.begin(), m.end()) };
+            auto it = keyword_map().find(text);
+            if (it != keyword_map().end())
+                m.set_id(it->second);
+        }
+    }
+    return result;
+}
+
+
+
+
+
+cpp_lexer_grammar::grammar_type& cpp_lexer_grammar::get_grammar()
+{
+    static grammar_type  grammar = [](){
+        const auto newline = terminal("\r\n") | terminal('\n') | terminal('\r');
+        const auto whitespace = terminal(' ') | terminal('\t') | newline;
+
+        const auto digit = range('0', '9');
+        const auto letter = range('a', 'z') | range('A', 'Z') | terminal('_');
+
+        // --- Comment Rules (Skipped) ---
+        // Single-line comment: // up to the end of the line (but not including the newline)
+        // const auto single_line_comment = (terminal("//") >> *(any() - newline))->*match_id_type::COMMENT_SINGLE_LINE;
+        const auto single_line_comment = terminal("//") >> *(any() - newline);
+
+        // Multi-line comment: /* followed by anything non-greedily, ending with */
+        // NOTE: A true regex for C-style comments is complex due to greediness and nesting.
+        // We use a simplified pattern that matches "/*" followed by any characters until "*/".
+        // A robust lexer would often use state management for this.
+        const auto multi_line_comment_content = *(any() - terminal("*/"));
+        // const auto multi_line_comment = (terminal("/*") >> multi_line_comment_content >> terminal("*/"))->*match_id_type::COMMENT_MULTI_LINE;
+        const auto multi_line_comment = terminal("/*") >> multi_line_comment_content >> terminal("*/");
+
+        // --- ADDED: Preprocessor Directive Rule ---
+        // Matches '#' followed by everything until the newline. Since it has NO ->*match_id_type, it's skipped.
+        const auto preprocessor_directive = terminal('#') >> *(any() - newline);
+
+        // The 'skippable' element: whitespace OR a comment. We use '+' to match one or more.
+        const auto skip_element = *(whitespace | single_line_comment | multi_line_comment | preprocessor_directive);
+
+
+        // --- Token Definitions ---
+
+        // Number token
+        const auto number = (+digit >> -('.' >> +digit))->*match_id_type::NUMBER;
+
+        // String Literal
+        // Matches '"' followed by any character that is not '"' or a newline, or an escaped character.
+        const auto string_char = terminal("\\\"") | terminal("\\\t") | terminal("\\\r") | terminal("\\\n") | (any() - terminal('\"'));
+        const auto string_literal = (terminal('\"') >> *string_char >> terminal('\"'))->*match_id_type::STRING_LITERAL;
+
+        // Identifier token
+        const auto identifier = (+letter >> *(letter | digit))->*match_id_type::IDENTIFIER;
+
+        // --- Operators and Symbols (Longest match first) ---
+
+        // 3-char operators/symbols
+        const auto left_shift_assign  = terminal("<<=") ->* match_id_type::LEFT_SHIFT;
+        const auto right_shift_assign = terminal(">>=") ->* match_id_type::RIGHT_SHIFT;
+        const auto ellipsis           = terminal("...") ->* match_id_type::COMMA; // Represents '...' variadic operator
+
+        // 2-char operators/symbols
+        const auto scope_res    = terminal("::") ->* match_id_type::SCOPE_RES;
+        const auto logical_or   = terminal("||") ->* match_id_type::LOGICAL_OR;
+        const auto logical_and  = terminal("&&") ->* match_id_type::LOGICAL_AND;
+        const auto eq           = terminal("==") ->* match_id_type::EQ;
+        const auto ne           = terminal("!=") ->* match_id_type::NE;
+        const auto le           = terminal("<=") ->* match_id_type::LE;
+        const auto ge           = terminal(">=") ->* match_id_type::GE;
+        const auto plus_assign  = terminal("+=") ->* match_id_type::PLUS_ASSIGN;
+        const auto minus_assign = terminal("-=") ->* match_id_type::MINUS_ASSIGN;
+        const auto mul_assign   = terminal("*=") ->* match_id_type::MUL_ASSIGN;
+        const auto div_assign   = terminal("/=") ->* match_id_type::DIV_ASSIGN;
+        const auto increment    = terminal("++") ->* match_id_type::INCREMENT;
+        const auto decrement    = terminal("--") ->* match_id_type::DECREMENT;
+        const auto right_shift  = terminal(">>") ->* match_id_type::RIGHT_SHIFT;
+        const auto left_shift   = terminal("<<") ->* match_id_type::LEFT_SHIFT;
+        const auto arrow        = terminal("->") ->* match_id_type::ARROW;
+
+        // 1-char operators/symbols
+        const auto assign        = terminal('=')->*match_id_type::ASSIGN;
+        const auto logical_not   = terminal('!')->*match_id_type::LOGICAL_NOT;
+        const auto lt            = terminal('<')->*match_id_type::LT;
+        const auto gt            = terminal('>')->*match_id_type::GT;
+        const auto plus          = terminal('+')->*match_id_type::PLUS;
+        const auto minus         = terminal('-')->*match_id_type::MINUS;
+        const auto mul           = terminal('*')->*match_id_type::MUL;
+        const auto div           = terminal('/')->*match_id_type::DIV;
+        const auto bit_and       = terminal('&')->*match_id_type::BIT_AND;
+        const auto bit_or        = terminal('|')->*match_id_type::BIT_OR;
+        const auto bit_xor       = terminal('^')->*match_id_type::BIT_XOR;
+        const auto bit_not       = terminal('~')->*match_id_type::BIT_NOT;
+        const auto lparen        = terminal('(')->*match_id_type::LEFT_PAREN;
+        const auto rparen        = terminal(')')->*match_id_type::RIGHT_PAREN;
+        const auto lbrace        = terminal('{')->*match_id_type::LEFT_BRACE;
+        const auto rbrace        = terminal('}')->*match_id_type::RIGHT_BRACE;
+        const auto semicolon     = terminal(';')->*match_id_type::SEMICOLON;
+        const auto comma         = terminal(',')->*match_id_type::COMMA;
+        const auto colon         = terminal(':')->*match_id_type::COLON;
+        const auto dot           = terminal('.')->*match_id_type::DOT;
+        const auto question_mark = terminal('?')->*match_id_type::QUESTION_MARK;
+        const auto lbracket      = terminal('[')->*match_id_type::LEFT_BRACKET;
+        const auto rbracket      = terminal(']')->*match_id_type::RIGHT_BRACKET;
+
+        // Token: Ordered from longest/most specific to shortest/least specific
+        const auto token =
+            string_literal | number |
+            // 3-char ops
+            left_shift_assign | right_shift_assign | ellipsis |
+            // 2-char ops
+            scope_res | logical_or | logical_and | eq | ne | le | ge |
+            plus_assign | minus_assign | mul_assign | div_assign |
+            increment | decrement | right_shift | left_shift | arrow |
+            // 1-char ops/symbols
+            assign | logical_not | lt | gt | plus | minus | mul | div |
+            bit_and | bit_or | bit_xor | bit_not |
+            lparen | rparen | lbrace | rbrace | semicolon | comma |
+            colon | dot | question_mark |
+            // Identifier comes last to prevent consuming keywords
+            identifier;
+
+        // Grammar: zero or more 'skip_element' OR 'token'
+        return *( skip_element >> token >> skip_element );
+    }();
+    return grammar;
+}
+
