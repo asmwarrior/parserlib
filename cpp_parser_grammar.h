@@ -23,12 +23,19 @@ public:
         FOR_LOOP,
         CONTROL_FLOW,
         PARAM_LIST,
-        ENUM_DEF
+        ENUM_DEF,
+        TEMPLATE_PARAMS,
+        TEMPLATE_FUNC_DECL,
+        TEMPLATE_FUNC_DEF,
+        TEMPLATE_CLASS_DEF,
+        USING_DECL
     };
 
     enum class error_id_type {
         INVALID_TOKEN,
-        INCOMPLETE_PARSE
+        INCOMPLETE_PARSE,
+        INVALID_STATEMENT,
+        INVALID_TEMPLATE
     };
 
     // Define the specific ParseContext type

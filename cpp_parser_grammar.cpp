@@ -15,6 +15,11 @@ const char* cpp_parser_grammar::match_id_to_string(match_id_type id) {
         case match_id_type::CONTROL_FLOW:         return "CONTROL_FLOW";
         case match_id_type::PARAM_LIST:           return "PARAM_LIST";
         case match_id_type::ENUM_DEF:             return "ENUM_DEF";
+        case match_id_type::TEMPLATE_PARAMS:      return "TEMPLATE_PARAMS";
+        case match_id_type::TEMPLATE_FUNC_DECL:   return "TEMPLATE_FUNC_DECL";
+        case match_id_type::TEMPLATE_FUNC_DEF:    return "TEMPLATE_FUNC_DEF";
+        case match_id_type::TEMPLATE_CLASS_DEF:   return "TEMPLATE_CLASS_DEF";
+        case match_id_type::USING_DECL:           return "USING_DECL";
     }
     return "UNKNOWN";
 }
@@ -26,6 +31,31 @@ public:
 
     instance() {
         using id_type = typename lexer_grammar::match_id_type;
+
+
+        // Add this in your instance() constructor
+        angle_bracket_skip_rule = function([](auto& pc) -> parse_result {
+            using id_type = typename cpp_lexer_grammar::match_id_type;
+            if (!pc.is_valid_parse_position() ||
+                pc.parse_position()->id() != id_type::LT) {
+                return false;
+            }
+
+            pc.increment_parse_position();
+            int angle_level = 1;
+
+            while (angle_level > 0 && pc.is_valid_parse_position()) {
+                const auto token_id = pc.parse_position()->id();
+                if (token_id == id_type::LT) {
+                    angle_level++;
+                } else if (token_id == id_type::GT) {
+                    angle_level--;
+                }
+                pc.increment_parse_position();
+            }
+
+            return angle_level == 0;
+        });
 
         // --- Custom rule to skip a block based on nested brace levels ---
         block_skip_rule = function([](auto& pc) -> parse_result {
@@ -160,7 +190,54 @@ public:
             >> -terminal(id_type::SEMICOLON))
             ->*match_id_type::CLASS_DEF;
 
-        top_level = (+(class_def | enum_def | func_def | func_decl | var_decl))
+        // Template parameter list
+        auto template_params = (terminal(id_type::TEMPLATE)
+            >> (angle_bracket_skip_rule->*match_id_type::TEMPLATE_PARAMS));
+
+        // Template function declaration
+        auto template_func_decl = (template_params
+            >> terminal(id_type::IDENTIFIER)
+            >> terminal(id_type::IDENTIFIER)
+            >> terminal(id_type::LEFT_PAREN)
+            >> terminal(id_type::RIGHT_PAREN)
+            >> terminal(id_type::SEMICOLON))
+            ->*match_id_type::TEMPLATE_FUNC_DECL;
+
+        // Template function definition
+        auto template_func_def = (template_params
+            >> terminal(id_type::IDENTIFIER)
+            >> terminal(id_type::IDENTIFIER)
+            >> terminal(id_type::LEFT_PAREN)
+            >> terminal(id_type::RIGHT_PAREN)
+            >> (block_skip_rule->*match_id_type::BLOCK_SKIP)
+            >> -terminal(id_type::SEMICOLON))
+            ->*match_id_type::TEMPLATE_FUNC_DEF;
+
+        // Template class definition
+        auto template_class_def = (template_params
+            >> terminal(id_type::CLASS)
+            >> (terminal(id_type::IDENTIFIER)->*match_id_type::CLASS_ID)
+            >> block
+            >> -terminal(id_type::SEMICOLON))
+            ->*match_id_type::TEMPLATE_CLASS_DEF;
+
+        using_decl = (terminal(id_type::USING)
+            >> terminal(id_type::NAMESPACE)
+            >> terminal(id_type::IDENTIFIER)
+            >> terminal(id_type::SEMICOLON))
+            ->*match_id_type::USING_DECL;
+
+        // Update top_level to include template rules
+        top_level = (+(using_decl
+                       | template_class_def
+                       | template_func_def
+                       | template_func_decl
+                       | class_def
+                       | enum_def
+                       | func_def
+                       | func_decl
+                       | var_decl
+                       | error(error_id_type::INVALID_STATEMENT, skip_until_after(terminal(id_type::SEMICOLON)))))
             ->*match_id_type::TOP_LEVEL;
     }
 
@@ -169,9 +246,12 @@ public:
     }
 
 private:
+
+        private:
     rule<ParseContext> var_decl, func_decl, func_def, block, class_def, top_level,
         block_skip_rule, paren_skip_rule, skip_to_semicolon_rule,
-        expression_statement, for_loop, control_flow_statement, enum_def;
+        angle_bracket_skip_rule,  // Add this
+        expression_statement, for_loop, control_flow_statement, enum_def, using_decl;
 };
 
 // Implement the parse method

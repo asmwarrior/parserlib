@@ -27,7 +27,7 @@ source_type src = R"(
 xyz abc;
 opq def;
 
-"abcdefg";
+string a;
 
 
 #include <iostream>
@@ -87,6 +87,14 @@ void test_cpp_lexer() {
             std::cout << "  Error at offset " << offset
                       << " (error id: " << static_cast<int>(err.id()) << ")\n";
         }
+
+        // For any error in the error container
+        for (const auto& error : result.errors) {
+            auto line = error.begin().line();
+            auto column = error.begin().column();
+            std::cout << "Error at line " << line << ", column " << column << std::endl;
+        }
+
     }
 
     std::cout << "Lexer stopped at offset "
