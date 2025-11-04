@@ -206,9 +206,100 @@ void test_cpp_parser() {
 }
 
 
+bool test_cpp_source(
+    const std::string& source_str,
+    cpp_parser_grammar::match_id_type expected_match_id,
+    bool should_parse_completely = true
+) {
+    // Convert to line_counting_string (non-const)
+    source_type source(source_str.c_str());
+
+    // Lex the source
+    auto lexer_result = lexer<line_counting_string<>, cpp_lexer_grammar>::parse(source);
+
+    // Create parse context with tokens
+    parse_context<
+        typename lexer<line_counting_string<>, cpp_lexer_grammar>::parsed_token_container_type,
+        cpp_parser_grammar::match_id_type,
+        cpp_parser_grammar::error_id_type
+    > pc(lexer_result.parsed_tokens);
+
+    // Parse
+    cpp_parser_grammar grammar;
+    const auto result = grammar.parse(pc);
+
+    // Print all matches for debugging
+    std::cout << "------------------------------------------------------------------------\n";
+    std::cout << "  Parsed " << pc.matches().size() << " matches:\n";
+    for (const auto& match : pc.matches()) {
+        std::cout << "    - " << cpp_parser_grammar::match_id_to_string(match.id());
+
+        // Print the tokens in this match
+        std::cout << " [tokens: ";
+        auto tokens = match.source();
+        for (size_t i = 0; i < tokens.size(); ++i) {
+            if (i > 0) std::cout << ", ";
+            std::cout << cpp_lexer_grammar::match_id_to_string(tokens[i].id());
+        }
+        std::cout << "]\n";
+    }
+
+    // Check basic success
+    if (!result) {
+        std::cout << "  Parse failed (result = false)\n";
+        return false;
+    }
+    if (should_parse_completely && !pc.is_end_parse_position()) {
+        std::cout << "  Parse incomplete (not at end position)\n";
+        return false;
+    }
+
+    // Check for expected match ID
+    for (const auto& match : pc.matches()) {
+        if (match.id() == expected_match_id) {
+            return true;
+        }
+    }
+
+    std::cout << "  Expected match ID not found: "
+              << cpp_parser_grammar::match_id_to_string(expected_match_id) << "\n";
+    return false;
+}
+
+struct TestCase {
+    std::string source;
+    cpp_parser_grammar::match_id_type expected_id;
+    std::string description = "";
+};
+
+void run_test_cases(const std::vector<TestCase>& test_cases) {
+    for (const auto& tc : test_cases) {
+        if (!test_cpp_source(tc.source, tc.expected_id)) {
+            std::cout << "Test Failed: " << tc.description << "\n";
+            std::cout << "  Source: " << tc.source << "\n";
+        } else {
+            std::cout << "Test Passed: " << tc.description << "\n";
+        }
+    }
+}
+
+void test_declarations() {
+    std::vector<TestCase> cases = {
+        {"sohu x;", cpp_parser_grammar::match_id_type::VAR_DECL, "simple var decl"},
+        {"int x = 5;", cpp_parser_grammar::match_id_type::VAR_DECL},
+        {"void foo();", cpp_parser_grammar::match_id_type::FUNC_DECL},
+        {"class Foo { };", cpp_parser_grammar::match_id_type::CLASS_DEF, "empty class"}
+        // Remove the struct test case or use CLASS_DEF for it
+    };
+    run_test_cases(cases);
+}
+
+
 int main() {
     test_cpp_lexer();
     std::cout << "\n----------------------------------------\n";
     test_cpp_parser();
+    std::cout << "\n----------------------------------------\n";
+    test_declarations();
     return 0;
 }

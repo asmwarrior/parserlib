@@ -228,7 +228,7 @@ public:
             ->*match_id_type::USING_DECL;
 
         // Update top_level to include template rules
-        top_level = (+(using_decl
+        top_level = +(var_decl
                        | template_class_def
                        | template_func_def
                        | template_func_decl
@@ -236,9 +236,8 @@ public:
                        | enum_def
                        | func_def
                        | func_decl
-                       | var_decl
-                       | error(error_id_type::INVALID_STATEMENT, skip_until_after(terminal(id_type::SEMICOLON)))))
-            ->*match_id_type::TOP_LEVEL;
+                       | using_decl
+                       | error(error_id_type::INVALID_STATEMENT, skip_until_after(terminal(id_type::SEMICOLON))));
     }
 
     parse_result parse(ParseContext& pc) noexcept {
