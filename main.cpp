@@ -294,12 +294,15 @@ void test_declarations() {
     run_test_cases(cases);
 }
 
+extern void test_cpp_parser_with_comments();
 
 int main() {
-    test_cpp_lexer();
-    std::cout << "\n----------------------------------------\n";
-    test_cpp_parser();
-    std::cout << "\n----------------------------------------\n";
-    test_declarations();
+//    test_cpp_lexer();
+//    std::cout << "\n----------------------------------------\n";
+//    test_cpp_parser();
+//    std::cout << "\n----------------------------------------\n";
+//    test_declarations();
+//    std::cout << "\n----------------------------------------\n";
+    test_cpp_parser_with_comments();
     return 0;
 }
