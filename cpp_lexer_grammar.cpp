@@ -104,6 +104,15 @@ const char* cpp_lexer_grammar::match_id_to_string(match_id_type id)
         case match_id_type::LEFT_BRACKET:           return "LEFT_BRACKET";
         case match_id_type::RIGHT_BRACKET:          return "RIGHT_BRACKET";
         case match_id_type::ENUM:                   return "ENUM";
+        case match_id_type::INCLUDE:               return "INCLUDE";
+        case match_id_type::DEFINE:                return "DEFINE";
+        case match_id_type::IFDEF:                 return "IFDEF";
+        case match_id_type::IFNDEF:                return "IFNDEF";
+        case match_id_type::ENDIF:                 return "ENDIF";
+
+        default:
+            return "UNKNOWN";
+
     }
     // This is necessary to avoid a compiler warning about non-void function
     // not returning a value on all control paths, even though all IDs are listed.

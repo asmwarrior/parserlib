@@ -55,7 +55,13 @@ public:
         PREPROCESSOR_DIRECTIVE,
         QUESTION_MARK,
         LEFT_BRACKET,
-        RIGHT_BRACKET
+        RIGHT_BRACKET,
+
+        INCLUDE,
+        DEFINE,
+        IFDEF,
+        IFNDEF,
+        ENDIF
     };
 
     // --- Error IDs ---

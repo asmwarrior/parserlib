@@ -28,7 +28,32 @@ public:
         TEMPLATE_FUNC_DECL,
         TEMPLATE_FUNC_DEF,
         TEMPLATE_CLASS_DEF,
-        USING_DECL
+        USING_DECL,
+
+        STRUCT_DEF,
+        NAMESPACE_DEF,
+        TYPEDEF_DECL,
+        ALIAS_DECL,
+        RETURN_STMT,
+        BREAK_STMT,
+        CONTINUE_STMT,
+        INCLUDE_DIRECTIVE,
+        MACRO_DEFINE,
+        MACRO_IF_BLOCK,
+        SWITCH_STMT,
+        CASE_LABEL,
+        DEFAULT_LABEL,
+        TRY_CATCH,
+        THROW_STMT,
+        OPERATOR_FUNC_DEF,
+        OPERATOR_FUNC_DECL,
+        CONSTRUCTOR_DEF,
+        CONSTRUCTOR_DECL,
+        DESTRUCTOR_DEF,
+        DESTRUCTOR_DECL,
+        TEMPLATE_SPEC_DEF,
+        COMMENT,
+        UNKNOWN_STATEMENT
     };
 
     enum class error_id_type {
