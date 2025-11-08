@@ -293,13 +293,63 @@ public:
             ->*match_id_type::TEMPLATE_CLASS_DEF;
 
 
+
+        auto enumerator = (terminal(id_type::IDENTIFIER)
+            >> -(terminal(id_type::ASSIGN) >> +(terminal(id_type::IDENTIFIER) | terminal(id_type::NUMBER))))
+            ->*match_id_type::ENUMERATOR;
+
+        auto enumerator_list = (
+            terminal(id_type::LEFT_BRACE)
+            >> +enumerator
+            >> terminal(id_type::RIGHT_BRACE))
+            ->*match_id_type::ENUM_LIST;
+
+        enum_def = (
+            terminal(id_type::ENUM)
+            >> -(terminal(id_type::CLASS) | terminal(id_type::STRUCT))
+            >> -(terminal(id_type::IDENTIFIER)->*match_id_type::ENUM_ID)
+            >> -enumerator_list
+            >> -terminal(id_type::SEMICOLON))
+            ->*match_id_type::ENUM_DEF;
+
+
+        // qualified name:  A::B::C
+        auto qualified_name =
+            terminal(id_type::IDENTIFIER)
+            >> *(terminal(id_type::SCOPE_RES) >> terminal(id_type::IDENTIFIER));
+
+        // using declaration:  "using namespace A::B;"  OR  "using A::B;"  OR  "using std::string;"
+        using_decl = (
+            terminal(id_type::USING)
+            >> (
+                 (terminal(id_type::NAMESPACE) >> qualified_name)
+               | qualified_name
+            )
+            >> terminal(id_type::SEMICOLON)
+        )->*match_id_type::USING_DECL;
+
         // Top level
-        top_level = +(include_directive | macro_define | macro_if_block
-            | using_decl | namespace_def | class_def | struct_def
-            | template_class_def | template_func_def | template_func_decl
-            | func_def | func_decl | enum_def | var_decl
-            | typedef_decl | alias_decl | control_flow_statement
-            | for_loop | expression_statement | comment
+        top_level = +(
+            include_directive
+            | macro_define
+            | macro_if_block
+            | using_decl
+            | namespace_def
+            | class_def
+            | struct_def
+            | template_class_def
+            | template_func_def
+            | template_func_decl
+            | func_def
+            | func_decl
+            | enum_def
+            | var_decl
+            | typedef_decl
+            | alias_decl
+            | control_flow_statement
+            | for_loop
+            | expression_statement
+            | comment
             | error(error_id_type::INVALID_STATEMENT, skip_until_after(terminal(id_type::SEMICOLON))));
     }
 

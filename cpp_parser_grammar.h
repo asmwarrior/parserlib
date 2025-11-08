@@ -53,7 +53,11 @@ public:
         DESTRUCTOR_DECL,
         TEMPLATE_SPEC_DEF,
         COMMENT,
-        UNKNOWN_STATEMENT
+        UNKNOWN_STATEMENT,
+        ENUMBERATOR,
+        ENUM_LIST,
+        ENUM_ID,
+        ENUMERATOR
     };
 
     enum class error_id_type {
