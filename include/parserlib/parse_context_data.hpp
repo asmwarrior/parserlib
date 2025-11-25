@@ -226,6 +226,13 @@ namespace parserlib {
         }
 
         /**
+         * Set the new id
+         */
+        void set_id(const id_type& new_id) {
+            m_id = new_id;
+        }
+
+        /**
          * Returns the start position.
          * @return the start position.
          */

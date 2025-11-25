@@ -329,6 +329,11 @@ namespace parserlib {
             return m_matches;
         }
 
+        /** Non-const version of matches() so we can modify the tokens. */
+        match_container_type& matches() {
+            return m_matches;
+        }
+
         /**
          * Returns the current state for a match start.
          * @return the state for a match start.
