@@ -27,69 +27,250 @@
 					<Add option="-s" />
 				</Linker>
 			</Target>
+			<Target title="non-build">
+				<Option type="4" />
+				<Option compiler="gcc" />
+			</Target>
 		</Build>
 		<Compiler>
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 			<Add directory="include" />
 		</Compiler>
-		<Unit filename="ast_visitor.h" />
-		<Unit filename="batch_test.cpp" />
-		<Unit filename="cpp_lexer_grammar.cpp" />
-		<Unit filename="cpp_lexer_grammar.h" />
-		<Unit filename="cpp_parser_grammar.cpp" />
-		<Unit filename="cpp_parser_grammar.h" />
-		<Unit filename="include/parserlib.hpp" />
-		<Unit filename="include/parserlib/annotation_parse_node.hpp" />
-		<Unit filename="include/parserlib/any_parse_node.hpp" />
-		<Unit filename="include/parserlib/ast.hpp" />
-		<Unit filename="include/parserlib/bool_parse_node.hpp" />
-		<Unit filename="include/parserlib/choice_parse_node.hpp" />
-		<Unit filename="include/parserlib/custom_comparator_string_parse_node.hpp" />
-		<Unit filename="include/parserlib/custom_comparator_symbol_parse_node.hpp" />
-		<Unit filename="include/parserlib/debug_parse_node.hpp" />
-		<Unit filename="include/parserlib/end_parse_node.hpp" />
-		<Unit filename="include/parserlib/error_match_parse_node.hpp" />
-		<Unit filename="include/parserlib/error_parse_node.hpp" />
-		<Unit filename="include/parserlib/function_parse_node.hpp" />
-		<Unit filename="include/parserlib/id_name.hpp" />
-		<Unit filename="include/parserlib/infinite_recursion_exception.hpp" />
-		<Unit filename="include/parserlib/is_char.hpp" />
-		<Unit filename="include/parserlib/is_parse_functor.hpp" />
-		<Unit filename="include/parserlib/logical_and_parse_node.hpp" />
-		<Unit filename="include/parserlib/logical_not_parse_node.hpp" />
-		<Unit filename="include/parserlib/loop_0_parse_node.hpp" />
-		<Unit filename="include/parserlib/loop_1_parse_node.hpp" />
-		<Unit filename="include/parserlib/loop_break_parse_node.hpp" />
-		<Unit filename="include/parserlib/loop_functions.hpp" />
-		<Unit filename="include/parserlib/match_parse_node.hpp" />
-		<Unit filename="include/parserlib/named_parse_node.hpp" />
-		<Unit filename="include/parserlib/newline_parse_node.hpp" />
-		<Unit filename="include/parserlib/on_error_parse_node.hpp" />
-		<Unit filename="include/parserlib/optional_parse_node.hpp" />
-		<Unit filename="include/parserlib/parse_context.hpp" />
-		<Unit filename="include/parserlib/parse_context_data.hpp" />
-		<Unit filename="include/parserlib/parse_context_default_options.hpp" />
-		<Unit filename="include/parserlib/parse_context_extensions.hpp" />
-		<Unit filename="include/parserlib/parse_context_options.hpp" />
-		<Unit filename="include/parserlib/parse_node.hpp" />
-		<Unit filename="include/parserlib/parse_node_wrapper.hpp" />
-		<Unit filename="include/parserlib/range_parse_node.hpp" />
-		<Unit filename="include/parserlib/rule.hpp" />
-		<Unit filename="include/parserlib/rule_optimizations.hpp" />
-		<Unit filename="include/parserlib/rule_ref_parse_node.hpp" />
-		<Unit filename="include/parserlib/sequence_parse_node.hpp" />
-		<Unit filename="include/parserlib/set_parse_node.hpp" />
-		<Unit filename="include/parserlib/skip_after_parse_node.hpp" />
-		<Unit filename="include/parserlib/skip_before_parse_node.hpp" />
-		<Unit filename="include/parserlib/skip_node_base.hpp" />
-		<Unit filename="include/parserlib/string_parse_node.hpp" />
-		<Unit filename="include/parserlib/symbol_functions.hpp" />
-		<Unit filename="include/parserlib/symbol_parse_node.hpp" />
-		<Unit filename="include/parserlib/tokenize_and_parse.hpp" />
-		<Unit filename="include/parserlib/tuple.hpp" />
-		<Unit filename="include/parserlib/utilities.hpp" />
-		<Unit filename="main.cpp" />
+		<Unit filename="ast_visitor.h">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="batch_test.cpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="cpp_lexer_grammar.cpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="cpp_lexer_grammar.h">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="cpp_parser_grammar.cpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="cpp_parser_grammar.h">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="examples/examples.cpp">
+			<Option target="non-build" />
+		</Unit>
+		<Unit filename="include/parserlib.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/annotation_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/any_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/ast.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/bool_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/choice_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/custom_comparator_string_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/custom_comparator_symbol_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/debug_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/end_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/error_match_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/error_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/function_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/id_name.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/infinite_recursion_exception.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/is_char.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/is_parse_functor.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/logical_and_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/logical_not_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/loop_0_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/loop_1_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/loop_break_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/loop_functions.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/match_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/named_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/newline_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/on_error_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/optional_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/parse_context.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/parse_context_data.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/parse_context_default_options.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/parse_context_extensions.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/parse_context_options.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/parse_node_wrapper.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/range_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/rule.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/rule_optimizations.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/rule_ref_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/sequence_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/set_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/skip_after_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/skip_before_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/skip_node_base.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/string_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/symbol_functions.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/symbol_parse_node.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/tokenize_and_parse.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/tuple.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="include/parserlib/utilities.hpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="main.cpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="tests/tests.cpp">
+			<Option target="non-build" />
+		</Unit>
 		<Extensions />
 	</Project>
 </CodeBlocks_project_file>
