@@ -70,13 +70,9 @@ public:
         UNCLOSED_STRING_LITERAL
     };
 
-    using parse_context_type = parse_context<
-        parserlib::line_counting_string<>,
-        match_id_type,
-        error_id_type,
-        case_sensitive_comparator,
-        empty_parse_context_extension
-    >;
+    using parse_context_type = parse_context<std::string, match_id_type, error_id_type, text_position, default_symbol_comparator_type>;
+
+
 
 
 
