@@ -66,7 +66,7 @@ namespace parserlib {
         #endif
 
     private:
-        const std::string m_name;
+        std::string m_name;
         const ParseNode m_parse_node;
     };
     #endif
