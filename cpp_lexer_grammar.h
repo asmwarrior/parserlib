@@ -82,7 +82,7 @@ public:
     // --- Keyword map (string -> match_id_type) ---
     static const std::unordered_map<std::string, match_id_type>& keyword_map();
 
-    parse_result parse(parse_context_type& pc) const noexcept;
+    bool parse(parse_context_type& pc) const noexcept;
 
     using grammar_type = rule<parse_context_type>;
     static grammar_type& get_grammar();

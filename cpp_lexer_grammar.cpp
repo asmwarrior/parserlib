@@ -181,14 +181,14 @@ const std::unordered_map<std::string, cpp_lexer_grammar::match_id_type>& cpp_lex
 }
 
 
-parse_result cpp_lexer_grammar::parse(parse_context_type& pc) const noexcept
+bool cpp_lexer_grammar::parse(parse_context_type& pc) const noexcept
 {
     auto& grammar = get_grammar();
     auto result = grammar.parse(pc);
 
     for (auto& m : pc.matches()) {
         if (m.id() == match_id_type::IDENTIFIER) {
-            std::string text{ parserlib::source(m.begin(), m.end()) };
+            std::string text{ m.source() };
             auto it = keyword_map().find(text);
             if (it != keyword_map().end())
                 m.set_id(it->second);
