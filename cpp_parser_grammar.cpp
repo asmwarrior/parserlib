@@ -67,16 +67,16 @@ public:
         using id_type = typename cpp_lexer_grammar::match_id_type;
 
         // ===== helper skip rules (keep your originals) =====
-        angle_bracket_skip_rule = function([](auto& pc) -> parse_result {
+        angle_bracket_skip_rule = function([](auto& pc) -> bool {
             using id_type = typename cpp_lexer_grammar::match_id_type;
-            if (!pc.is_valid_parse_position() ||
-                pc.parse_position()->id() != id_type::LT)
+            if (!pc.parse_valid() ||
+                (*pc.parse_position().iterator()).id() != id_type::LT)
                 return false;
 
             pc.increment_parse_position();
             int angle_level = 1;
-            while (angle_level > 0 && pc.is_valid_parse_position()) {
-                auto token_id = pc.parse_position()->id();
+            while (angle_level > 0 && pc.parse_valid()) {
+                auto token_id = (*pc.parse_position().iterator()).id();
                 if (token_id == id_type::LT) angle_level++;
                 else if (token_id == id_type::GT) angle_level--;
                 pc.increment_parse_position();
@@ -84,16 +84,16 @@ public:
             return angle_level == 0;
         });
 
-        block_skip_rule = function([](auto& pc) -> parse_result {
+        block_skip_rule = function([](auto& pc) -> bool {
             using id_type = typename cpp_lexer_grammar::match_id_type;
-            if (!pc.is_valid_parse_position() ||
-                pc.parse_position()->id() != id_type::LEFT_BRACE)
+            if (!pc.parse_valid() ||
+                (*pc.parse_position().iterator()).id() != id_type::LEFT_BRACE)
                 return false;
 
             pc.increment_parse_position();
             int brace_level = 1;
-            while (brace_level > 0 && pc.is_valid_parse_position()) {
-                auto id = pc.parse_position()->id();
+            while (brace_level > 0 && pc.parse_valid()) {
+                auto id = (*pc.parse_position().iterator()).id();
                 if (id == id_type::LEFT_BRACE) brace_level++;
                 else if (id == id_type::RIGHT_BRACE) brace_level--;
                 pc.increment_parse_position();
@@ -101,11 +101,11 @@ public:
             return brace_level == 0;
         });
 
-        skip_to_semicolon_rule = function([](auto& pc) -> parse_result {
+        skip_to_semicolon_rule = function([](auto& pc) -> bool {
             using id_type = typename cpp_lexer_grammar::match_id_type;
             int paren = 0, brace = 0, bracket = 0;
-            while (pc.is_valid_parse_position()) {
-                auto id = pc.parse_position()->id();
+            while (pc.parse_valid()) {
+                auto id = (*pc.parse_position().iterator()).id();
                 if (id == id_type::SEMICOLON && !paren && !brace && !bracket) {
                     pc.increment_parse_position();
                     return true;
@@ -121,16 +121,16 @@ public:
             return false;
         });
 
-        paren_skip_rule = function([](auto& pc) -> parse_result {
+        paren_skip_rule = function([](auto& pc) -> bool {
             using id_type = typename cpp_lexer_grammar::match_id_type;
-            if (!pc.is_valid_parse_position() ||
-                pc.parse_position()->id() != id_type::LEFT_PAREN)
+            if (!pc.parse_valid() ||
+                (*pc.parse_position().iterator()).id() != id_type::LEFT_PAREN)
                 return false;
 
             pc.increment_parse_position();
             int level = 1;
-            while (level > 0 && pc.is_valid_parse_position()) {
-                auto id = pc.parse_position()->id();
+            while (level > 0 && pc.parse_valid()) {
+                auto id = (*pc.parse_position().iterator()).id();
                 if (id == id_type::LEFT_PAREN) level++;
                 else if (id == id_type::RIGHT_PAREN) level--;
                 pc.increment_parse_position();
@@ -350,10 +350,10 @@ public:
             | for_loop
             | expression_statement
             | comment
-            | error(error_id_type::INVALID_STATEMENT, skip_until_after(terminal(id_type::SEMICOLON))));
+            | error(error_id_type::INVALID_STATEMENT, skip_after(terminal(id_type::SEMICOLON))));
     }
 
-    parse_result parse(ParseContext& pc) noexcept {
+    bool parse(ParseContext& pc) noexcept {
         return top_level.parse(pc);
     }
 
@@ -372,7 +372,7 @@ rule<ParseContext>
 
 
 // Implement the parse method
-parse_result cpp_parser_grammar::parse(parse_context_type& pc) const noexcept {
+bool cpp_parser_grammar::parse(parse_context_type& pc) const noexcept {
     instance inst;
     return inst.parse(pc);
 }

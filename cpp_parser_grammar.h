@@ -68,13 +68,16 @@ public:
     };
 
     // Define the specific ParseContext type
-    using parse_context_type = parse_context<
-        typename lexer<line_counting_string<>, lexer_grammar>::parsed_token_container_type,
-        match_id_type,
-        error_id_type,
-        case_sensitive_comparator,
-        empty_parse_context_extension
-    >;
+    // using parse_context_type = cpp_lexer_grammar::parse_context_type::derive_parse_context<match_id_type>;
+
+
+using parse_context_type = parse_context<
+    lexer_grammar::parse_context_type::match_container_type,
+    match_id_type,
+    error_id_type,
+    default_text_position,
+    default_symbol_comparator
+>;
 
     static const char* match_id_to_string(match_id_type id);
 
@@ -88,7 +91,7 @@ public:
     }
 
     // Non-template parse method
-    parse_result parse(parse_context_type& pc) const noexcept;
+    bool parse(parse_context_type& pc) const noexcept;
 
 private:
     class instance;  // Forward declaration
