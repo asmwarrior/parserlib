@@ -64,7 +64,7 @@ static auto two_char_token() {
     const auto right_shift  = terminal(">>")->*cpp_lexer_grammar::match_id_type::RIGHT_SHIFT;
     const auto left_shift   = terminal("<<")->*cpp_lexer_grammar::match_id_type::LEFT_SHIFT;
     const auto arrow        = terminal("->")->*cpp_lexer_grammar::match_id_type::ARROW;
-    return scope_res | logical_or | logical_and | eq | ne | le | ge | plus_assign | minus_assign | mul_assign | div_assign | increment | right_shift | left_shift | arrow;
+    return scope_res | logical_or | logical_and | eq | ne | le | ge | plus_assign | minus_assign | mul_assign | div_assign | increment | decrement | right_shift | left_shift | arrow;
 }
 
 

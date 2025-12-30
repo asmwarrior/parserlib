@@ -137,7 +137,7 @@ public:
     };
 
     // --- Parse context type ---
-    using parse_context_type = container_parse_context<std::string, match_id_type, error_id_type, text_source_position, default_symbol_comparator>;
+    using parse_context_type = parse_context<std::string::const_iterator, match_id_type, error_id_type, default_symbol_comparator>;
 
     // --- parse node pointer type ---
     using parse_node_ptr_type = parse_node_ptr<parse_context_type>;
