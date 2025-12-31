@@ -53,6 +53,14 @@
 			<Option target="Debug" />
 			<Option target="Release" />
 		</Unit>
+		<Unit filename="cpp_parser_grammar.cpp">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
+		<Unit filename="cpp_parser_grammar.h">
+			<Option target="Debug" />
+			<Option target="Release" />
+		</Unit>
 		<Unit filename="include/parserlib.hpp">
 			<Option target="Debug" />
 			<Option target="Release" />
