@@ -4,6 +4,7 @@
 
 #include "parserlib.hpp"
 #include "cpp_lexer_grammar.h"
+#include "cpp_parser_grammar.h"
 
 using namespace parserlib;
 
@@ -46,8 +47,49 @@ void test_cpp_lexer() {
     }
 }
 
+void test_cpp_parser() {
+    const std::string src = R"(
+        abc x;
+        xyz y;
+    )";
+
+    // --- Lex ---
+    cpp_lexer_grammar::parse_context_type lex_pc{src.begin(), src.end()};
+    if (!cpp_lexer_grammar::parse(lex_pc)) {
+        std::cout << "Lexing failed\n";
+        return;
+    }
+
+    // --- Parse ---
+    cpp_parser_grammar::parse_context_type parse_pc{
+        lex_pc.get_matches().begin(),
+        lex_pc.get_matches().end()
+    };
+
+    cpp_parser_grammar grammar;
+    bool ok = grammar.parse(parse_pc);
+
+    std::cout << "Parser success: " << std::boolalpha << ok << "\n";
+
+    for (const auto& m : parse_pc.get_matches()) {
+        std::cout << "match: "
+                  << cpp_parser_grammar::match_id_to_string(m.get_id())
+                  << "\n";
+    }
+
+    if (!parse_pc.get_errors().empty()) {
+        std::cout << "Parser errors:\n";
+        for (const auto& e : parse_pc.get_errors()) {
+            std::cout << "  error id="
+                      << static_cast<int>(e.get_id()) << "\n";
+        }
+    }
+}
+
+
 int main() {
     test_cpp_lexer();
+    test_cpp_parser();
     return 0;
 }
 
