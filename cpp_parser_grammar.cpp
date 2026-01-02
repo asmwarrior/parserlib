@@ -264,7 +264,8 @@ public:
             >> block
             >> -terminal(id_type::SEMICOLON))
             ->*match_id_type::CLASS_DEF;
-                // --- Template-related rules (reintroduced) ---
+
+        // --- Template-related rules (reintroduced) ---
         auto template_params = (terminal(id_type::TEMPLATE)
             >> (angle_bracket_skip_rule->*match_id_type::TEMPLATE_PARAMS));
 
