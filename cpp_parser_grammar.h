@@ -89,14 +89,65 @@ public:
     // --- parse ---
     bool parse(parse_context_type& pc);
 
-    template <typename Node>
-    static void print_ast(const Node& node, int indent = 0) {
-        std::string space(indent, ' ');
-        std::cout << space << match_id_to_string(node->id()) << space
-                  << node->children().size() << " \"" << node->source() << "\"\n";
-        for (auto& c : node->children())
-            print_ast(c, indent + 2);
+        template <typename ASTNodePtr>
+        static void print_ast(const ASTNodePtr& node, int indent = 0) {
+            using node_type = typename std::remove_reference_t<decltype(*node)>;
+            using iterator_type = typename node_type::iterator_type;
+
+            std::string space(indent, ' ');
+
+            // Print node id
+            std::cout << space
+                      << match_id_to_string(node->get_id())
+                      << " (" << node->get_children().size() << ")";
+
+            // Print source text if iterators are printable
+            if constexpr (std::is_same_v<
+                              typename std::iterator_traits<iterator_type>::value_type,
+                              char>) {
+                std::string text(node->begin(), node->end());
+                std::cout << " \"" << text << "\"";
+            }
+
+            std::cout << "\n";
+
+            // Recurse
+            for (const auto& child : node->get_children()) {
+                print_ast(child, indent + 2);
+            }
+        }
+
+
+template <typename MatchType>
+static void print_match(const MatchType& m, int indent = 0)
+{
+    std::string space(indent, ' ');
+
+    std::cout << space
+              << match_id_to_string(m.get_id())
+              << " (" << m.get_children().size() << ")";
+
+    // If this match spans lexer tokens, reconstruct source text
+    if (m.begin() != m.end()) {
+        auto first_token = *m.begin();
+        auto last_token  = *(m.end() - 1);
+
+        std::string text(first_token.begin(), last_token.end());
+        std::cout << " \"" << text << "\"";
     }
+
+    std::cout << "\n";
+
+    // Recurse
+    for (const auto& child : m.get_children()) {
+        print_match(child, indent + 2);
+    }
+}
+
+
+
+
+
 
 
 private:
