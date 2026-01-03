@@ -15,7 +15,7 @@ static auto letter() {
 
 
 static auto newline() {
-    return terminal("\r\n") | terminal('\n') | terminal('\r');
+    return parserlib::newline(terminal("\r\n") | terminal('\n') | terminal('\r'));;
 }
 
 
