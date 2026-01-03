@@ -29,22 +29,38 @@ void test_cpp_lexer() {
     std::cout << "=== Lexer test ===\n";
     std::cout << "Success: " << std::boolalpha << success << "\n";
 
-    size_t index = 0;
-    for (const auto& token : pc.get_matches()) {
-        std::string text(token.begin(), token.end());
-        std::cout << "[" << index++ << "] id="
-                  << cpp_lexer_grammar::match_id_to_string(token.get_id())
-                  << " text='" << text << "'\n";
-    }
+for (const auto& token : pc.get_matches())
+{
+    // Extract underlying iterators from parse_iterator wrappers
+    auto begin_iter = token.begin().get_iterator();
+    auto end_iter = token.end().get_iterator();
+    std::string text(begin_iter, end_iter);
 
-    if (!pc.get_errors().empty()) {
-        std::cout << "\nLexer errors:\n";
-        for (const auto& err : pc.get_errors()) {
-            auto offset = std::distance(src.begin(), err.begin());
-            std::cout << "  Error at offset " << offset
-                      << " (error id=" << static_cast<int>(err.get_id()) << ")\n";
-        }
-    }
+    auto pos = token.begin().get_text_position();
+
+    std::cout
+        << cpp_lexer_grammar::match_id_to_string(token.get_id())
+        << " \"" << text << "\""
+        << " @ " << pos.get_line()
+        << ":" << pos.get_column()
+        << "\n";
+}
+
+for (const auto& err : pc.get_errors()) {
+    auto pos = err.begin().get_text_position();
+
+    // Extract underlying iterators from parse_iterator wrappers
+    auto begin_iter = err.begin().get_iterator();
+    auto end_iter = err.end().get_iterator();
+    std::string text(begin_iter, end_iter);
+
+    std::cout
+        << "  Error at "
+        << pos.get_line() << ":" << pos.get_column()
+        << " id=" << static_cast<int>(err.get_id())
+        << " near '" << text << "'\n";
+}
+
 }
 
 void test_cpp_parser() {

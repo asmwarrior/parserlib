@@ -136,8 +136,23 @@ public:
         UNCLOSED_STRING_LITERAL
     };
 
+
+
+    // position-aware iterator
+    using lexer_iterator =
+        parse_iterator<
+            std::string::const_iterator,
+            file_text_position
+        >;
+
     // --- Parse context type ---
-    using parse_context_type = parse_context<std::string::const_iterator, match_id_type, error_id_type, default_symbol_comparator>;
+    using parse_context_type =
+        parse_context<
+            lexer_iterator,
+            match_id_type,
+            error_id_type,
+            default_symbol_comparator
+        >;
 
     // --- parse node pointer type ---
     using parse_node_ptr_type = parse_node_ptr<parse_context_type>;

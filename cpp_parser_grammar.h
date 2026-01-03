@@ -118,6 +118,33 @@ public:
         }
 
 
+//template <typename MatchType>
+//static void print_match(const MatchType& m, int indent = 0)
+//{
+//    std::string space(indent, ' ');
+//
+//    std::cout << space
+//              << match_id_to_string(m.get_id())
+//              << " (" << m.get_children().size() << ")";
+//
+//    // If this match spans lexer tokens, reconstruct source text
+//    if (m.begin() != m.end()) {
+//        auto first_token = *m.begin();
+//        auto last_token  = *(m.end() - 1);
+//
+//        std::string text(first_token.begin(), last_token.end());
+//        std::cout << " \"" << text << "\"";
+//    }
+//
+//    std::cout << "\n";
+//
+//    // Recurse
+//    for (const auto& child : m.get_children()) {
+//        print_match(child, indent + 2);
+//    }
+//}
+
+
 template <typename MatchType>
 static void print_match(const MatchType& m, int indent = 0)
 {
@@ -132,7 +159,10 @@ static void print_match(const MatchType& m, int indent = 0)
         auto first_token = *m.begin();
         auto last_token  = *(m.end() - 1);
 
-        std::string text(first_token.begin(), last_token.end());
+        // Extract underlying iterators from parse_iterator wrappers
+        auto begin_iter = first_token.begin().get_iterator();
+        auto end_iter = last_token.end().get_iterator();
+        std::string text(begin_iter, end_iter);
         std::cout << " \"" << text << "\"";
     }
 
@@ -143,7 +173,6 @@ static void print_match(const MatchType& m, int indent = 0)
         print_match(child, indent + 2);
     }
 }
-
 
 
 
