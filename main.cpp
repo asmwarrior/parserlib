@@ -31,10 +31,7 @@ void test_cpp_lexer() {
 
 for (const auto& token : pc.get_matches())
 {
-    // Extract underlying iterators from parse_iterator wrappers
-    auto begin_iter = token.begin().get_iterator();
-    auto end_iter = token.end().get_iterator();
-    std::string text(begin_iter, end_iter);
+    std::string text = token.get_source();
 
     auto pos = token.begin().get_text_position();
 
@@ -49,10 +46,7 @@ for (const auto& token : pc.get_matches())
 for (const auto& err : pc.get_errors()) {
     auto pos = err.begin().get_text_position();
 
-    // Extract underlying iterators from parse_iterator wrappers
-    auto begin_iter = err.begin().get_iterator();
-    auto end_iter = err.end().get_iterator();
-    std::string text(begin_iter, end_iter);
+    std::string text = err.get_source();
 
     std::cout
         << "  Error at "
