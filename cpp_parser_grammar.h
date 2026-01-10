@@ -89,6 +89,19 @@ public:
     // --- parse ---
     bool parse(parse_context_type& pc);
 
+
+
+
+    // the print_ast code which is used for non position print
+//    template <typename Node>
+//    static void print_ast(const Node& node, int indent = 0) {
+//        std::string space(indent, ' ');
+//        std::cout << space << match_id_to_string(node->id()) << space
+//                  << node->children().size() << " \"" << node->source() << "\"\n";
+//        for (auto& c : node->children())
+//            print_ast(c, indent + 2);
+//    }
+
         template <typename ASTNodePtr>
         static void print_ast(const ASTNodePtr& node, int indent = 0) {
             using node_type = typename std::remove_reference_t<decltype(*node)>;
