@@ -138,6 +138,9 @@ public:
 
 
 
+    // by default, we can define the parse_context_type like below
+    // using parse_context_type = parse_context<parserlib::parse_iterator<>, match_id_type, error_id_type, default_symbol_comparator>;
+    // but if we want the position-aware iterator, we need to use the below code
     // position-aware iterator
     using lexer_iterator =
         parse_iterator<
