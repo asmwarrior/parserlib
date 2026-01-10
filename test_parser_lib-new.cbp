@@ -49,14 +49,6 @@
 			<Option target="Debug" />
 			<Option target="Release" />
 		</Unit>
-		<Unit filename="cpp_lexer_grammar_get_grammar.cpp">
-			<Option target="Debug" />
-			<Option target="Release" />
-		</Unit>
-		<Unit filename="cpp_lexer_grammar_get_keyword_grammar.cpp">
-			<Option target="Debug" />
-			<Option target="Release" />
-		</Unit>
 		<Unit filename="cpp_parser_grammar.cpp">
 			<Option target="Debug" />
 			<Option target="Release" />
